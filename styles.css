@@ -1,0 +1,807 @@
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #000;
+  margin: 0;
+  padding: 20px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - 40px);
+  position: relative;
+}
+
+h1 {
+  margin-bottom: 30px;
+  color: #fff;
+}
+
+.game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+  position: relative;
+  width: 100%;
+}
+
+#gameCanvas {
+  background-color: #222;
+  border: 2px solid #444;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #2980b9;
+}
+
+.stats-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: rgba(40, 40, 40, 0.7);
+  padding: 10px;
+  border-radius: 0 0 8px 0;
+  z-index: 10;
+  margin-top: 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  max-width: 200px;
+}
+
+.game-stats {
+  display: grid;
+  grid-template-columns: auto;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stat-group {
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  margin-top: 5px;
+  padding-top: 5px;
+}
+
+.stat-group-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.legend {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background-color: rgba(100, 100, 100, 0.5);
+  padding: 10px;
+  border-radius: 8px 0 0 0;
+  font-size: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 160px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.instructions {
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 15px;
+  border-radius: 8px;
+  max-width: 500px;
+  margin-top: 20px;
+  text-align: center;
+}
+
+.objective {
+  margin-bottom: 10px;
+}
+
+.key-controls {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 5px;
+}
+
+@keyframes complete-animation {
+  0% {
+    transform: scale(1) rotate(0);
+  }
+  100% {
+    transform: scale(0) rotate(120deg);
+    opacity: 0;
+  }
+}
+
+@keyframes appear-animation {
+  0% {
+    transform: scale(0) rotate(120deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+
+.win-animation {
+  animation: complete-animation 0.5s cubic-bezier(0.5, 0, 0.75, 0)
+    forwards;
+}
+
+.appear-animation {
+  animation: appear-animation 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)
+    forwards;
+}
+
+.copy-button {
+  background-color: #2ecc71;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.copy-button:hover {
+  background-color: #27ae60;
+}
+
+.copy-button:active {
+  transform: scale(0.95);
+}
+
+.copy-notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background-color: rgba(46, 204, 113, 0.9);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 2000; /* Increased z-index to appear above dialogs */
+  opacity: 0;
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.copy-notification.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* GitHub button style */
+.github-button {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #24292e;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.github-button:hover {
+  background-color: #404448;
+}
+
+.github-button svg {
+  margin-right: 8px;
+  width: 20px;
+  height: 20px;
+}
+
+/* Dialog Overlay Styles */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+.dialog-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.dialog-content {
+  padding: 25px;
+  border-radius: 10px;
+  border: 2px solid #444;
+  background-color: #222;
+  color: #fff;
+  min-width: 450px;
+  max-width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  transform: scale(0.9);
+  transition: transform 0.3s;
+}
+
+.dialog-overlay.show .dialog-content {
+  transform: scale(1);
+}
+
+/* Remove old dialog styles */
+dialog#savedLevelsDialog {
+  display: none;
+}
+
+dialog#generationParamsDialog {
+  display: none;
+}
+
+#savedLevelsList {
+  list-style-type: none;
+  padding: 0;
+  margin: 15px 0;
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  width: 100%;
+  /* Added to ensure tooltips can appear outside the container */
+  position: relative;
+}
+
+#savedLevelsList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 15px;
+  margin-bottom: 8px;
+  background-color: #333;
+  border-radius: 5px;
+  transition: background-color 0.2s;
+}
+
+#savedLevelsList li:hover {
+  background-color: #3a3a3a;
+}
+
+#savedLevelsList li .level-name {
+  flex: 1;
+  font-weight: bold;
+  margin-right: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+#savedLevelsList li .btn-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#savedLevelsList .btn-actions .dialog-btn {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#savedLevelsList .btn-actions .dialog-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+#savedLevelsList .btn-actions .dialog-btn.load-btn svg {
+  margin-left: 2px; /* Center the play icon visually */
+}
+
+/* Tooltip styling */
+#savedLevelsList .btn-actions .dialog-btn::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  transform: translateY(-50%);
+  margin-right: 8px;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+#savedLevelsList .btn-actions .dialog-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  transform: translateY(-50%);
+  margin-right: 3px;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 5px solid rgba(0, 0, 0, 0.85);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+#savedLevelsList .btn-actions .dialog-btn:hover::before,
+#savedLevelsList .btn-actions .dialog-btn:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Custom scrollbar styling */
+#savedLevelsList::-webkit-scrollbar {
+  width: 8px;
+}
+
+#savedLevelsList::-webkit-scrollbar-track {
+  background: #222;
+  border-radius: 4px;
+}
+
+#savedLevelsList::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+#savedLevelsList::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+.search-container {
+  margin: 15px 0;
+  position: relative;
+  width: 100%;
+}
+
+.search-container input {
+  width: 100%;
+  padding: 10px 15px 10px 35px;
+  box-sizing: border-box;
+  border-radius: 5px;
+  border: 1px solid #444;
+  background-color: #333;
+  color: #fff;
+  font-size: 14px;
+}
+
+.search-container input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+}
+
+.search-container .search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+  font-size: 16px;
+}
+
+.empty-list-message {
+  text-align: center;
+  padding: 25px;
+  color: #999;
+  font-style: italic;
+  background-color: #2a2a2a;
+  border-radius: 5px;
+  margin: 15px 0;
+}
+
+#savedLevelsList li .level-name {
+  flex-grow: 1;
+  font-weight: bold;
+  margin-right: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#savedLevelsList li .btn-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.dialog-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  min-width: 75px;
+}
+
+.dialog-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.dialog-btn.load-btn {
+  background-color: #2ecc71;
+}
+
+.dialog-btn.delete-btn {
+  background-color: #e74c3c;
+}
+
+.dialog-btn.copy-btn {
+  background-color: #f39c12;
+}
+
+.dialog-btn.close-btn {
+  background-color: #7f8c8d;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  gap: 10px;
+}
+
+.icon {
+  font-size: 16px;
+}
+
+.empty-list-message {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+  font-style: italic;
+}
+
+/* Custom Dialog System */
+.custom-dialog-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+.custom-dialog-container.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.custom-dialog {
+  background-color: #222;
+  border-radius: 10px;
+  border: 2px solid #444;
+  padding: 25px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  transform: scale(0.9);
+  transition: transform 0.3s;
+}
+
+.custom-dialog-container.show .custom-dialog {
+  transform: scale(1);
+}
+
+.custom-dialog-title {
+  color: #3498db;
+  margin-top: 0;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #444;
+  font-size: 18px;
+  text-align: center;
+}
+
+.custom-dialog-content {
+  margin: 20px 0;
+}
+
+.custom-dialog-input {
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  border-radius: 5px;
+  border: 1px solid #444;
+  background-color: #333;
+  color: #fff;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.custom-dialog-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+}
+
+.custom-dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.custom-dialog-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.custom-dialog-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.custom-dialog-btn.primary {
+  background-color: #3498db;
+}
+
+.custom-dialog-btn.danger {
+  background-color: #e74c3c;
+}
+
+.custom-dialog-btn.cancel {
+  background-color: #7f8c8d;
+}
+
+/* Improved parameters dialog styles */
+.params-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 10px;
+  padding-bottom: 10px;
+}
+
+.params-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.params-container::-webkit-scrollbar-track {
+  background: #222;
+  border-radius: 4px;
+}
+
+.params-container::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.params-container::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+.params-section {
+  background-color: rgba(60, 60, 60, 0.5);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(100, 100, 100, 0.3);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease-in-out;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.params-section.collapsed {
+  max-height: 50px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background-color: rgba(80, 80, 80, 0.5);
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-header h3 {
+  margin: 0;
+  color: #3498db;
+  font-size: 16px;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.toggle-btn .arrow {
+  font-size: 12px;
+  transition: transform 0.3s;
+}
+
+.collapsed .toggle-btn .arrow {
+  transform: rotate(-90deg);
+}
+
+.section-content {
+  padding: 15px;
+  transition: all 0.3s;
+  min-height: 0; /* Remove the min-height which was causing the squishing */
+  height: auto;
+  overflow: visible;
+}
+
+.params-section.collapsed .section-content {
+  height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.param-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.param-row:last-child {
+  margin-bottom: 0;
+}
+
+.param-row label {
+  flex: 1;
+  font-size: 14px;
+  color: #e0e0e0;
+}
+
+.param-row input[type="number"],
+.param-row input[type="range"] {
+  flex: 1;
+  background-color: #444;
+  border: 1px solid #555;
+  padding: 8px 10px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.param-row input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+}
+
+.param-row input[type="range"] {
+  height: 6px;
+  appearance: none;
+  background: linear-gradient(90deg, #3498db, #2ecc71);
+  outline: none;
+  border-radius: 3px;
+  padding: 0;
+}
+
+.param-row input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  border: 2px solid #3498db;
+}
+
+.param-row span {
+  font-size: 14px;
+  width: 40px;
+  text-align: right;
+}
+
+.dialog-footer {
+  margin-top: 25px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
