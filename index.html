@@ -1,0 +1,2138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sokoban Level Generator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #000;
+            margin: 0;
+            padding: 20px;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: calc(100vh - 40px);
+            position: relative;
+        }
+        
+        h1 {
+            margin-bottom: 30px;
+            color: #fff;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+            position: relative;
+            width: 100%;
+        }
+        
+        #gameCanvas {
+            background-color: #222;
+            border: 2px solid #444;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 150px;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .stats-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: rgba(40, 40, 40, 0.7);
+            padding: 10px;
+            border-radius: 0 0 8px 0;
+            z-index: 10;
+            margin-top: 0;
+            max-height: 70vh;
+            overflow-y: auto;
+            max-width: 200px;
+        }
+        
+        .game-stats {
+            display: grid;
+            grid-template-columns: auto;
+            gap: 5px;
+            font-size: 12px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        
+        .stat-group {
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            margin-top: 5px;
+            padding-top: 5px;
+        }
+        
+        .stat-group-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+            font-size: 13px;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background-color: rgba(100, 100, 100, 0.5);
+            padding: 10px;
+            border-radius: 8px 0 0 0;
+            font-size: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-width: 160px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
+        .instructions {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 500px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .objective {
+            margin-bottom: 10px;
+        }
+        
+        .key-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 5px;
+        }
+        
+        @keyframes complete-animation {
+            0% { transform: scale(1) rotate(0); }
+            100% { transform: scale(0) rotate(120deg); opacity: 0; }
+        }
+        
+        @keyframes appear-animation {
+            0% { transform: scale(0) rotate(120deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+        
+        .win-animation {
+            animation: complete-animation 0.5s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+        }
+        
+        .appear-animation {
+            animation: appear-animation 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .copy-button {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        
+        .copy-button:hover {
+            background-color: #27ae60;
+        }
+        
+        .copy-button:active {
+            transform: scale(0.95);
+        }
+        
+        .copy-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background-color: rgba(46, 204, 113, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+        
+        .copy-notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* Saved Levels Dialog Styles */
+        dialog#savedLevelsDialog {
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px solid #444;
+            background-color: #222;
+            color: #fff;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+        
+        dialog#savedLevelsDialog::backdrop {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        dialog#savedLevelsDialog h2 {
+            color: #3498db;
+            text-align: center;
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
+        }
+        
+        #savedLevelsList {
+            list-style-type: none;
+            padding: 0;
+            margin: 15px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+        
+        #savedLevelsList li {
+            display: flex;
+            align-items: center;
+            padding: 6px 10px;
+            margin-bottom: 4px;
+            background-color: #333;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        
+        /* Custom scrollbar styling */
+        #savedLevelsList::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #savedLevelsList::-webkit-scrollbar-track {
+            background: #222;
+            border-radius: 4px;
+        }
+        
+        #savedLevelsList::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+        
+        #savedLevelsList::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+        
+        .search-container {
+            margin: 15px 0;
+            position: relative;
+        }
+        
+        .search-container input {
+            width: 100%;
+            padding: 8px 15px 8px 35px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background-color: #333;
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        .search-container input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+        }
+        
+        .search-container .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 16px;
+        }
+        
+        #savedLevelsList li .level-name {
+            flex-grow: 1;
+            font-weight: bold;
+            margin-right: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        #savedLevelsList li .btn-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .dialog-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        .dialog-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .dialog-btn.load-btn {
+            background-color: #2ecc71;
+        }
+        
+        .dialog-btn.delete-btn {
+            background-color: #e74c3c;
+        }
+        
+        .dialog-btn.copy-btn {
+            background-color: #f39c12;
+        }
+        
+        .dialog-btn.close-btn {
+            background-color: #7f8c8d;
+        }
+        
+        .dialog-footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        
+        .icon {
+            font-size: 16px;
+        }
+        
+        .empty-list-message {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-style: italic;
+        }
+
+        /* Generation Parameters Dialog Styles */
+        dialog#generationParamsDialog {
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px solid #444;
+            background-color: #222;
+            color: #fff;
+            max-width: 600px;
+            max-height: 90vh;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+        }
+        
+        dialog#generationParamsDialog::backdrop {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .params-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .params-section {
+            background-color: #333;
+            border-radius: 6px;
+            padding: 15px;
+        }
+        
+        .params-section h3 {
+            color: #3498db;
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 16px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+        
+        .param-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+        
+        .param-row label {
+            flex: 1;
+            font-size: 14px;
+        }
+        
+        .param-row input[type="number"],
+        .param-row input[type="range"] {
+            flex: 1;
+            background-color: #444;
+            border: 1px solid #555;
+            padding: 5px 8px;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        .param-row input[type="range"] {
+            height: 6px;
+            appearance: none;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            outline: none;
+            border-radius: 3px;
+            padding: 0;
+        }
+        
+        .param-row input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            border: 2px solid #3498db;
+        }
+        
+        .param-row span {
+            font-size: 14px;
+            width: 40px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sokoban Level Generator</h1>
+    
+    <div class="stats-panel">
+      <div class="game-stats">
+          <div class="stat-group">
+              <div class="stat-group-title">Level Info</div>
+              <div class="stat-item">
+                  <span>Seed:</span>
+                  <span id="seedStat">-</span>
+              </div>
+              <div class="stat-item">
+                  <span>Grid:</span>
+                  <span id="gridSizeStat">-</span>
+              </div>
+              <div class="stat-item">
+                  <span>Switches:</span>
+                  <span id="switchesStat">-</span>
+              </div>
+          </div>
+          
+          <div class="stat-group">
+              <div class="stat-group-title">Pathfinding</div>
+              <div class="stat-item">
+                  <span>Steps:</span>
+                  <span id="stepsStat">-</span>
+              </div>
+              <div class="stat-item">
+                  <span>Keep Forward:</span>
+                  <span id="keepForwardStat">-</span>
+              </div>
+              <div class="stat-item">
+                  <span>On Floor:</span>
+                  <span id="walkOnFloorStat">-</span>
+              </div>
+              <div class="stat-item">
+                  <span>Backwards:</span>
+                  <span id="goBackwardsStat">-</span>
+              </div>
+          </div>
+          
+          <div class="stat-group">
+              <div class="stat-group-title">Switches & Boulders</div>
+              <div class="stat-item">
+                  <span>Min Switches:</span>
+                  <span id="minSwitchStat">-</span>
+              </div>
+              <div class="stat-item">
+                  <span>Max Switches:</span>
+                  <span id="maxSwitchStat">-</span>
+              </div>
+              <div class="stat-item">
+                  <span>Create Switch %:</span>
+                  <span id="createSwitchStat">-</span>
+              </div>
+              <div class="stat-item">
+                  <span>Min Pull:</span>
+                  <span id="minPullStat">-</span>
+              </div>
+              <div class="stat-item">
+                  <span>Drop Boulder %:</span>
+                  <span id="dropBoulderStat">-</span>
+              </div>
+          </div>
+          
+          <div class="stat-group">
+              <div class="stat-group-title">Floor & Holes</div>
+              <div class="stat-item">
+                  <span>Min Floor Tiles:</span>
+                  <span id="minFloorStat">-</span>
+              </div>
+              <div class="stat-item">
+                  <span>Max Floor Tiles:</span>
+                  <span id="maxFloorStat">-</span>
+              </div>
+              <div class="stat-item">
+                  <span>Carve Hole %:</span>
+                  <span id="carveHoleStat">-</span>
+              </div>
+          </div>
+      </div>
+  </div>
+  
+  <div class="legend">
+      <div class="legend-item">
+          <div class="legend-color" style="background-color: #00f;"></div>
+          <span>Player</span>
+      </div>
+      <div class="legend-item">
+          <div class="legend-color" style="background-color: #a50;"></div>
+          <span>Boulder</span>
+      </div>
+      <div class="legend-item">
+          <div class="legend-color" style="background-color: #f00;"></div>
+          <span>Switch</span>
+      </div>
+      <div class="legend-item">
+          <div class="legend-color" style="background-color: #0f0;"></div>
+          <span>Exit</span>
+      </div>
+      <div class="legend-item">
+          <div class="legend-color" style="background-color: #000;"></div>
+          <span>Hole</span>
+      </div>
+  </div>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="500" height="400"></canvas>
+        
+        
+        <div class="controls">
+            <button id="newGameBtn">New Level</button>
+            <button id="sameParamsBtn">Retry Same</button>
+        </div>
+        <div class="controls">
+          <button id="copyLevelBtn" class="copy-button">Copy Level URL</button>
+          <button id="saveLevelBtn" class="copy-button">Save Level</button>
+          <button id="showSavedLevelsBtn" class="copy-button">Levels List</button>
+          <button id="showParamsDialogBtn" class="copy-button">Adjust Parameters</button>
+        </div>
+
+        <dialog id="savedLevelsDialog">
+            <h2>📂 Saved Levels</h2>
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="levelSearchInput" placeholder="Search saved levels...">
+            </div>
+            <div id="savedLevelsList"></div>
+            <div class="dialog-footer">
+                <button id="exportDatabaseBtn" class="dialog-btn">
+                    <span class="icon">⬇️</span> Export
+                </button>
+                <input type="file" id="importDatabaseInput" style="display: none;" />
+                <button id="importDatabaseBtn" class="dialog-btn">
+                    <span class="icon">⬆️</span> Import
+                </button>
+                <button id="closeSavedLevelsDialogBtn" class="dialog-btn close-btn">
+                    <span class="icon">✖️</span> Close
+                </button>
+            </div>
+        </dialog>
+        
+        <dialog id="generationParamsDialog">
+            <h2>📊 Level Generation Parameters</h2>
+
+            <div class="params-container">
+                <div class="params-section">
+                    <h3>Grid Settings</h3>
+                    <div class="param-row">
+                        <label for="gridW">Width:</label>
+                        <input type="number" id="gridW" min="5" max="30" value="10">
+                    </div>
+                    <div class="param-row">
+                        <label for="gridH">Height:</label>
+                        <input type="number" id="gridH" min="3" max="20" value="5">
+                    </div>
+                </div>
+
+                <div class="params-section">
+                    <h3>Pathfinding</h3>
+                    <div class="param-row">
+                        <label for="nbSteps">Steps:</label>
+                        <input type="number" id="nbSteps" min="50" max="500" value="230">
+                    </div>
+                    <div class="param-row">
+                        <label for="chanceToKeepForward">Keep Forward:</label>
+                        <input type="number" id="chanceToKeepForward" min="0.1" max="5" step="0.1" value="1.7">
+                    </div>
+                    <div class="param-row">
+                        <label for="chanceToWalkOnFloor">Walk On Floor:</label>
+                        <input type="number" id="chanceToWalkOnFloor" min="0.1" max="5" step="0.1" value="3.3">
+                    </div>
+                    <div class="param-row">
+                        <label for="chanceToGoBackwards">Go Backwards:</label>
+                        <input type="number" id="chanceToGoBackwards" min="0.01" max="1" step="0.01" value="0.1">
+                    </div>
+                </div>
+
+                <div class="params-section">
+                    <h3>Switches & Boulders</h3>
+                    <div class="param-row">
+                        <label for="minNbSwitch">Min Switches:</label>
+                        <input type="number" id="minNbSwitch" min="1" max="20" value="7">
+                    </div>
+                    <div class="param-row">
+                        <label for="maxNbSwitch">Max Switches:</label>
+                        <input type="number" id="maxNbSwitch" min="5" max="200" value="150">
+                    </div>
+                    <div class="param-row">
+                        <label for="chanceToCreateSwitch">Create Switch (%):</label>
+                        <input type="range" id="chanceToCreateSwitch" min="0" max="100" value="70">
+                        <span id="chanceToCreateSwitchValue">70%</span>
+                    </div>
+                    <div class="param-row">
+                        <label for="minPull">Min Boulder Pulls:</label>
+                        <input type="number" id="minPull" min="1" max="10" value="3">
+                    </div>
+                    <div class="param-row">
+                        <label for="chanceToDropBoulder">Drop Boulder (%):</label>
+                        <input type="range" id="chanceToDropBoulder" min="0" max="100" value="50">
+                        <span id="chanceToDropBoulderValue">50%</span>
+                    </div>
+                </div>
+
+                <div class="params-section">
+                    <h3>Floor & Holes</h3>
+                    <div class="param-row">
+                        <label for="minNbFloorTiles">Min Floor Tiles:</label>
+                        <input type="number" id="minNbFloorTiles" min="5" max="100" value="13">
+                    </div>
+                    <div class="param-row">
+                        <label for="maxNbFloorTiles">Max Floor Tiles:</label>
+                        <input type="number" id="maxNbFloorTiles" min="10" max="500" value="47">
+                    </div>
+                    <div class="param-row">
+                        <label for="chanceToCarveHole">Carve Hole (%):</label>
+                        <input type="range" id="chanceToCarveHole" min="0" max="100" value="60">
+                        <span id="chanceToCarveHoleValue">60%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dialog-footer">
+                <button id="applyParamsBtn" class="dialog-btn">
+                    <span class="icon">✅</span> Apply
+                </button>
+                <button id="resetDefaultsBtn" class="dialog-btn">
+                    <span class="icon">🔄</span> Reset Defaults
+                </button>
+                <button id="closeParamsDialogBtn" class="dialog-btn close-btn">
+                    <span class="icon">✖️</span> Cancel
+                </button>
+            </div>
+        </dialog>
+        
+        <div class="copy-notification" id="copyNotification">Level URL Copied!</div>
+    </div>
+    
+    <div class="instructions">
+        <div class="objective">
+            <strong>Goal:</strong> Push boulders onto switches and reach the exit
+        </div>
+        <div class="key-controls">
+            <span>Move: Arrow Keys / WASD</span>
+            <span>New Level: N</span>
+            <span>Retry: R</span>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Sokoban-style Level Generator
+         * A clean JavaScript implementation of the Construct 3 level generator
+         */
+
+        class LevelGenerator {
+          constructor(config = {}) {
+            // Grid settings
+            this.tileW = config.tileW || 32;
+            this.gridW = config.gridW || 10;
+            this.gridH = config.gridH || 5;
+            
+            // Generation parameters
+            this.chanceToKeepForward = config.chanceToKeepForward || 1.7;
+            this.chanceToWalkOnFloor = config.chanceToWalkOnFloor || 3.3;
+            this.chanceToGoBackwards = config.chanceToGoBackwards || 0.1;
+            this.nbSteps = config.nbSteps || 230;
+            this.maxNbSwitch = config.maxNbSwitch || 150;
+            this.minNbSwitch = config.minNbSwitch || 7;
+            this.minPull = config.minPull || 3;
+            this.chanceToCreateSwitch = config.chanceToCreateSwitch || 0.7;
+            this.chanceToDropBoulder = config.chanceToDropBoulder || 0.5;
+            this.minNbFloorTiles = config.minNbFloorTiles || 13;
+            this.maxNbFloorTiles = config.maxNbFloorTiles || 47;
+            this.chanceToCarveHole = config.chanceToCarveHole || 1;
+            
+            // State variables
+            this.seed = config.seed || Math.floor(Math.random() * 1000000000000000).toString();
+            this.random = new Random(this.seed);
+            this.isGenerating = false;
+            this.doRandom = true;
+            this.isPullingBoulder = false;
+            this.nbBoulderPulls = 0;
+            
+            // Game objects
+            this.grid = [];
+            this.player = null;
+            this.exit = null;
+            this.boulders = [];
+            this.switches = [];
+          }
+
+          /**
+           * Generate a random level
+           */
+          async generate() {
+            this.isGenerating = true;
+            let attempts = 0;
+            const maxAttempts = 3000;
+            
+            if (this.doRandom) {
+              this.randomizeParameters();
+            }
+            this.random = new Random(this.seed);
+            
+            while (attempts < maxAttempts) {
+              attempts++;
+              
+              this.establishGrid();
+              this.createExit();
+              await this.generatePathways();
+              this.clearMalformedSwitches();
+              this.generateHoles();
+              
+              // Verify the level is valid
+              if (this.isLevelValid()) {
+                this.isGenerating = false;
+                return {
+                  grid: this.grid,
+                  player: this.player,
+                  exit: this.exit,
+                  boulders: this.boulders,
+                  switches: this.switches,
+                  seed: this.seed,
+                  gridW: this.gridW,
+                  gridH: this.gridH,
+                  generationFailed: false
+                };
+              }
+              
+              // Change seed slightly for next attempt
+              this.seed = (parseInt(this.seed) + 1).toString();
+              this.random = new Random(this.seed);
+              
+              // Every 100 attempts, slightly adjust parameters to increase chances of success
+              if (attempts % 100 === 0) {
+                this.adjustParametersForDifficultGeneration();
+              }
+            }
+            
+            // If we get here, generation failed after max attempts
+            this.isGenerating = false;
+            return {
+              generationFailed: true,
+              attempts: maxAttempts,
+              seed: this.seed
+            };
+          }
+          
+          /**
+           * Adjust parameters to make generation more likely to succeed
+           */
+          adjustParametersForDifficultGeneration() {
+            // Increase minimum floor tiles slightly
+            this.minNbFloorTiles = Math.max(this.minNbFloorTiles - 1, 5);
+            
+            // Decrease minimum switches requirement
+            this.minNbSwitch = Math.max(this.minNbSwitch - 1, 1);
+            
+            // Increase chance to create switches
+            this.chanceToCreateSwitch = Math.min(this.chanceToCreateSwitch + 0.05, 0.95);
+            
+            // Adjust pathfinding to create more varied layouts
+            this.chanceToWalkOnFloor = Math.min(this.chanceToWalkOnFloor + 0.1, 5.0);
+            this.chanceToKeepForward = Math.min(this.chanceToKeepForward + 0.1, 3.0);
+          }
+          
+          /**
+           * Randomize the generation parameters
+           */
+          randomizeParameters() {
+            this.chanceToCarveHole = Math.floor(Math.random() * 0.6 * 100) / 100;
+            this.chanceToDropBoulder = Math.floor((Math.random() * 0.5 + 0.2) * 100) / 100;
+            this.minPull = Math.floor(Math.random() * 4) + 2;
+            this.gridH = Math.floor(Math.random() * 4) + 5;
+            this.gridW = Math.floor(Math.random() * 7) + 10;
+            this.seed = Math.floor(Math.random() * 1000000000000000).toString();
+            // this.random = new Random(this.seed);
+          }
+          
+          /**
+           * Create the initial grid of walls
+           */
+          establishGrid() {
+            // Reset all game objects
+            this.grid = [];
+            this.player = null;
+            this.exit = null;
+            this.boulders = [];
+            this.switches = [];
+            
+            // Create a grid of wall tiles
+            for (let y = 0; y < this.gridH; y++) {
+              const row = [];
+              for (let x = 0; x < this.gridW; x++) {
+                row.push({
+                  x,
+                  y,
+                  wall: true,
+                  hole: false,
+                  lockedByGen: false,
+                  type: 'wall'
+                });
+              }
+              this.grid.push(row);
+            }
+            
+            this.isPullingBoulder = false;
+          }
+          
+          /**
+           * Create the exit and player starting position
+           */
+          createExit() {
+            // Pick a random tile for the exit
+            const x = Math.floor(this.random.next() * this.gridW);
+            const y = Math.floor(this.random.next() * this.gridH);
+            
+            // Create exit and player at the same position
+            this.exit = { x, y };
+            this.player = { 
+              x, 
+              y, 
+              prevX: x, 
+              prevY: y 
+            };
+            
+            // Mark the tile as floor
+            this.grid[y][x] = {
+              x,
+              y,
+              wall: false,
+              hole: false,
+              lockedByGen: true,
+              type: 'floor'
+            };
+          }
+          
+          /**
+           * Generate pathways by walking through the level
+           */
+          async generatePathways() {
+            for (let i = 0; i < this.nbSteps; i++) {
+              this.doStep();
+              if (this.renderer) {
+                this.renderer.setLevel({
+                  grid: this.grid,
+                  player: this.player,
+                  exit: this.exit,
+                  boulders: this.boulders,
+                  switches: this.switches
+                });
+                this.renderer.render();
+              }
+            //   await new Promise(resolve => setTimeout(resolve, 100));
+            }
+          }
+          
+          /**
+           * Take one step in the level generation process
+           */
+          doStep() {
+            // Get a valid tile to move to
+            const tile = this.pickTile();
+            if (!tile) return;
+            
+            // Update player position
+            this.player.prevX = this.player.x;
+            this.player.prevY = this.player.y;
+            this.player.x = tile.x;
+            this.player.y = tile.y;
+            
+            // Mark the tile as floor
+            this.grid[tile.y][tile.x] = {
+              x: tile.x,
+              y: tile.y,
+              wall: false,
+              hole: false,
+              lockedByGen: true,
+              type: 'floor'
+            };
+            
+            // Handle boulder pulling
+            if (this.isPullingBoulder) {
+              const movedFromBoulder = this.getMovedAwayFromBoulder();
+              if (movedFromBoulder) {
+                // Move the boulder to the player's previous position
+                movedFromBoulder.x = this.player.prevX;
+                movedFromBoulder.y = this.player.prevY;
+                movedFromBoulder.nbPulls++;
+                this.nbBoulderPulls++;
+              } else {
+                this.isPullingBoulder = false;
+              }
+            } else {
+              // Check if we moved away from a boulder
+              const movedFromBoulder = this.getMovedAwayFromBoulder();
+              if (movedFromBoulder && 
+                  (movedFromBoulder.nbPulls >= this.minPull || 
+                   this.random.next() < this.chanceToDropBoulder)) {
+                this.isPullingBoulder = true;
+                this.nbBoulderPulls = 0;
+              }
+              
+              // Try to create a switch and boulder
+              const shouldCreateSwitch = 
+                this.random.nextWeighted([
+                  { value: true, weight: this.chanceToCreateSwitch },
+                  { value: false, weight: 1 - this.chanceToCreateSwitch }
+                ]);
+              
+              if (shouldCreateSwitch && 
+                  this.switches.length < this.maxNbSwitch &&
+                  this.getMovedAwayFromWall()) {
+                
+                // Get the direction we moved from
+                const dx = this.player.prevX - this.player.x;
+                const dy = this.player.prevY - this.player.y;
+                const wallX = this.player.prevX + dx;
+                const wallY = this.player.prevY + dy;
+                
+                // Check if the wall position is valid
+                if (wallX >= 0 && wallX < this.gridW && wallY >= 0 && wallY < this.gridH && 
+                    this.grid[wallY][wallX].wall) {
+                  
+                  // Create a switch at the wall
+                  const newSwitch = {
+                    x: wallX,
+                    y: wallY
+                  };
+                  this.switches.push(newSwitch);
+                  
+                  // Turn the wall into a floor
+                  this.grid[wallY][wallX] = {
+                    x: wallX,
+                    y: wallY,
+                    wall: false,
+                    hole: false,
+                    lockedByGen: true,
+                    type: 'floor'
+                  };
+                  
+                  // Create a boulder at the player's previous position
+                  const boulder = {
+                    x: this.player.prevX,
+                    y: this.player.prevY,
+                    switchUID: this.switches.length - 1,
+                    nbPulls: 0
+                  };
+                  this.boulders.push(boulder);
+                  
+                  this.isPullingBoulder = true;
+                  this.nbBoulderPulls = 0;
+                }
+              }
+            }
+          }
+          
+          /**
+           * Pick a valid tile to move to
+           */
+          pickTile() {
+            const tiles = [];
+            const weights = [];
+            
+            // Count floor tiles
+            const floorTiles = this.grid.flat().filter(t => t.type === 'floor').length;
+            
+            // For each adjacent tile to the player
+            for (let y = -1; y <= 1; y++) {
+              for (let x = -1; x <= 1; x++) {
+                // Skip diagonals and center
+                if ((x === 0 && y === 0) || (x !== 0 && y !== 0)) continue;
+                
+                const nx = this.player.x + x;
+                const ny = this.player.y + y;
+                
+                // Skip out of bounds
+                if (nx < 0 || nx >= this.gridW || ny < 0 || ny >= this.gridH) continue;
+                
+                const tile = this.grid[ny][nx];
+                
+                // Skip tiles with boulders
+                if (this.boulders.some(b => b.x === nx && b.y === ny)) continue;
+                
+                // Skip the exit
+                if (this.exit.x === nx && this.exit.y === ny) continue;
+                
+                // Calculate probability for this tile
+                let probability = 1;
+                
+                // Going back to previous position
+                if (nx === this.player.prevX && ny === this.player.prevY) {
+                  probability *= this.chanceToGoBackwards;
+                }
+                
+                // Going forward in the same direction
+                if (nx === this.player.x + (this.player.x - this.player.prevX) &&
+                    ny === this.player.y + (this.player.y - this.player.prevY)) {
+                  probability *= this.chanceToKeepForward;
+                }
+                
+                // Walking on existing floor
+                if (tile.type === 'floor') {
+                  probability *= this.chanceToWalkOnFloor;
+                }
+                
+                // Don't exceed max floor tiles
+                if (tile.type !== 'floor' && floorTiles >= this.maxNbFloorTiles) {
+                  probability = 0;
+                }
+                
+                // Add to options if probability > 0
+                if (probability > 0) {
+                  tiles.push(tile);
+                  weights.push(probability);
+                }
+              }
+            }
+            
+            // Return a weighted random tile
+            if (tiles.length === 0) return null;
+            return this.random.nextWeightedFromArrays(tiles, weights);
+          }
+          
+          /**
+           * Check if the player moved away from a boulder
+           */
+          getMovedAwayFromBoulder() {
+            const dx = this.player.prevX - this.player.x;
+            const dy = this.player.prevY - this.player.y;
+            const targetX = this.player.prevX + dx;
+            const targetY = this.player.prevY + dy;
+            
+            return this.boulders.find(b => b.x === targetX && b.y === targetY);
+          }
+          
+          /**
+           * Check if the player moved away from a wall
+           */
+          getMovedAwayFromWall() {
+            const dx = this.player.prevX - this.player.x;
+            const dy = this.player.prevY - this.player.y;
+            const targetX = this.player.prevX + dx;
+            const targetY = this.player.prevY + dy;
+            
+            if (targetX < 0 || targetX >= this.gridW || targetY < 0 || targetY >= this.gridH) {
+              return false;
+            }
+            
+            return this.grid[targetY][targetX].wall;
+          }
+          
+          /**
+           * Remove invalid switch/boulder pairs
+           */
+          clearMalformedSwitches() {
+            for (let i = this.boulders.length - 1; i >= 0; i--) {
+              const boulder = this.boulders[i];
+              let malformed = false;
+              
+              // Switch and boulder at same position
+              if (this.switches.some(s => s.x === boulder.x && s.y === boulder.y)) {
+                malformed = true;
+              }
+              
+              // Boulder hasn't been pulled enough
+              if (boulder.nbPulls < this.minPull) {
+                malformed = true;
+              }
+              
+              if (malformed) {
+                // Remove the linked switch and boulder
+                const switchIndex = boulder.switchUID;
+                if (switchIndex >= 0 && switchIndex < this.switches.length) {
+                  this.switches.splice(switchIndex, 1);
+                }
+                this.boulders.splice(i, 1);
+                
+                // Reindex the remaining boulders' switchUIDs
+                for (let j = 0; j < this.boulders.length; j++) {
+                  if (this.boulders[j].switchUID > switchIndex) {
+                    this.boulders[j].switchUID--;
+                  }
+                }
+              }
+            }
+          }
+          
+          /**
+           * Generate holes in the level
+           */
+          generateHoles() {
+            for (let i = 0; i < 10; i++) { // The original code does this 10 times
+              for (let y = 0; y < this.gridH; y++) {
+                for (let x = 0; x < this.gridW; x++) {
+                  const tile = this.grid[y][x];
+                  
+                  // Skip tiles locked by generation
+                  if (tile.lockedByGen) continue;
+                  
+                  let top = false, bottom = false, left = false, right = false;
+                  
+                  // Check adjacent tiles
+                  if (y > 0 && !this.grid[y-1][x].wall) top = true;
+                  if (y < this.gridH-1 && !this.grid[y+1][x].wall) bottom = true;
+                  if (x > 0 && !this.grid[y][x-1].wall) left = true;
+                  if (x < this.gridW-1 && !this.grid[y][x+1].wall) right = true;
+                  
+                  // Can be a hole if there's a path around it
+                  const canBeHole = (top && bottom) || (left && right);
+                  
+                  if (canBeHole && this.random.next() < this.chanceToCarveHole) {
+                    this.grid[y][x] = {
+                      x,
+                      y,
+                      wall: false,
+                      hole: true,
+                      lockedByGen: false,
+                      type: 'hole'
+                    };
+                  }
+                }
+              }
+            }
+          }
+          
+          /**
+           * Check if the generated level is valid
+           */
+          isLevelValid() {
+            // Must have minimum number of switches
+            if (this.switches.length < this.minNbSwitch) {
+              return false;
+            }
+            
+            // Must have minimum number of floor tiles
+            const floorTiles = this.grid.flat().filter(t => t.type === 'floor').length;
+            if (floorTiles < this.minNbFloorTiles) {
+              return false;
+            }
+            
+            // Player can't start on a boulder or switch
+            if (this.boulders.some(b => b.x === this.player.x && b.y === this.player.y) ||
+                this.switches.some(s => s.x === this.player.x && s.y === this.player.y)) {
+              return false;
+            }
+            
+            return true;
+          }
+          
+          /**
+           * Check if the level is complete (all switches covered)
+           */
+          isLevelComplete() {
+            for (const s of this.switches) {
+              if (!this.boulders.some(b => b.x === s.x && b.y === s.y)) {
+                return false;
+              }
+            }
+            return true;
+          }
+          
+          /**
+           * Move the player in a direction
+           */
+          movePlayer(dirX, dirY) {
+            const targetX = this.player.x + dirX;
+            const targetY = this.player.y + dirY;
+            
+            // Check bounds
+            if (targetX < 0 || targetX >= this.gridW || targetY < 0 || targetY >= this.gridH) {
+              return false;
+            }
+            
+            const targetTile = this.grid[targetY][targetX];
+            
+            // Can't move into walls or holes
+            if (targetTile.wall || targetTile.hole) {
+              return false;
+            }
+            
+            // Check for boulder in the way
+            const boulder = this.boulders.find(b => b.x === targetX && b.y === targetTile.y);
+            if (boulder) {
+              const pushTargetX = targetX + dirX;
+              const pushTargetY = targetY + dirY;
+              
+              // Check if we can push the boulder
+              if (pushTargetX < 0 || pushTargetX >= this.gridW || 
+                  pushTargetY < 0 || pushTargetY >= this.gridH) {
+                return false;
+              }
+              
+              const pushTargetTile = this.grid[pushTargetY][pushTargetX];
+              
+              // Can't push into wall
+              if (pushTargetTile.wall) {
+                return false;
+              }
+              
+              // Can't push into another boulder
+              if (this.boulders.some(b => b.x === pushTargetX && b.y === pushTargetY)) {
+                return false;
+              }
+              
+              // Push the boulder
+              boulder.x = pushTargetX;
+              boulder.y = pushTargetY;
+              
+              // Boulder falls into hole
+              if (pushTargetTile.hole) {
+                const idx = this.boulders.indexOf(boulder);
+                if (idx !== -1) {
+                  this.boulders.splice(idx, 1);
+                }
+              }
+            }
+            
+            // Move the player
+            this.player.prevX = this.player.x;
+            this.player.prevY = this.player.y;
+            this.player.x = targetX;
+            this.player.y = targetY;
+            
+            // Check if level is complete and player is at exit
+            if (this.exit.x === targetX && this.exit.y === targetY && this.isLevelComplete()) {
+              return 'win';
+            }
+            
+            return true;
+          }
+        }
+
+        /**
+         * Simple random number generator with seed support
+         */
+        class Random {
+          constructor(seed) {
+            this.seed = seed ? this.hashString(seed) : Math.random() * 2147483647;
+          }
+          
+          /**
+           * Generate a hash from a string
+           */
+          hashString(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+              hash = ((hash << 5) - hash) + str.charCodeAt(i);
+              hash = hash & hash; // Convert to 32bit integer
+            }
+            return Math.abs(hash);
+          }
+          
+          /**
+           * Get next random value between 0 and 1
+           */
+          next() {
+            const x = Math.sin(this.seed++) * 10000;
+            return x - Math.floor(x);
+          }
+          
+          /**
+           * Pick a random weighted value
+           */
+          nextWeighted(options) {
+            const totalWeight = options.reduce((sum, option) => sum + option.weight, 0);
+            let value = this.next() * totalWeight;
+            
+            for (const option of options) {
+              value -= option.weight;
+              if (value <= 0) {
+                return option.value;
+              }
+            }
+            
+            return options[options.length - 1].value;
+          }
+          
+          /**
+           * Pick a weighted random item from arrays of items and weights
+           */
+          nextWeightedFromArrays(items, weights) {
+            const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+            let value = this.next() * totalWeight;
+            
+            for (let i = 0; i < weights.length; i++) {
+              value -= weights[i];
+              if (value <= 0) {
+                return items[i];
+              }
+            }
+            
+            return items[items.length - 1];
+          }
+        }
+
+        /**
+         * Game renderer
+         */
+        class GameRenderer {
+          constructor(canvas, tileSize = 32) {
+            this.canvas = canvas;
+            this.ctx = canvas.getContext('2d');
+            this.tileSize = tileSize;
+            this.level = null;
+          }
+          
+          setLevel(level) {
+            this.level = level;
+            
+            // Resize canvas to fit level
+            this.canvas.width = level.gridW * this.tileSize;
+            this.canvas.height = level.gridH * this.tileSize;
+            
+            this.render();
+          }
+          
+          render() {
+            if (!this.level) return;
+            
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Draw tiles
+            for (let y = 0; y < this.level.gridH; y++) {
+              for (let x = 0; x < this.level.gridW; x++) {
+                const tile = this.level.grid[y][x];
+                const tx = x * this.tileSize;
+                const ty = y * this.tileSize;
+                
+                if (tile.wall) {
+                  this.ctx.fillStyle = '#666';
+                  this.ctx.fillRect(tx, ty, this.tileSize, this.tileSize);
+                } else if (tile.hole) {
+                  this.ctx.fillStyle = '#000';
+                  this.ctx.fillRect(tx, ty, this.tileSize, this.tileSize);
+                } else {
+                  this.ctx.fillStyle = '#aaa';
+                  this.ctx.fillRect(tx, ty, this.tileSize, this.tileSize);
+                }
+                
+                // Draw grid lines
+                this.ctx.strokeStyle = '#444';
+                this.ctx.strokeRect(tx, ty, this.tileSize, this.tileSize);
+              }
+            }
+            
+            // Draw exit
+            this.ctx.fillStyle = '#0f0';
+            this.ctx.beginPath();
+            this.ctx.arc(
+              this.level.exit.x * this.tileSize + this.tileSize/2,
+              this.level.exit.y * this.tileSize + this.tileSize/2,
+              this.tileSize/4, 0, Math.PI * 2
+            );
+            this.ctx.fill();
+            
+            // Draw switches
+            for (const s of this.level.switches) {
+              this.ctx.fillStyle = '#f00';
+              this.ctx.beginPath();
+              this.ctx.arc(
+                s.x * this.tileSize + this.tileSize/2,
+                s.y * this.tileSize + this.tileSize/2,
+                this.tileSize/3, 0, Math.PI * 2
+              );
+              this.ctx.fill();
+            }
+            
+            // Draw boulders
+            for (const b of this.level.boulders) {
+              this.ctx.fillStyle = '#a50';
+              this.ctx.beginPath();
+              this.ctx.arc(
+                b.x * this.tileSize + this.tileSize/2,
+                b.y * this.tileSize + this.tileSize/2,
+                this.tileSize/2 - 2, 0, Math.PI * 2
+              );
+              this.ctx.fill();
+            }
+            
+            // Draw player
+            this.ctx.fillStyle = '#00f';
+            this.ctx.beginPath();
+            this.ctx.arc(
+              this.level.player.x * this.tileSize + this.tileSize/2,
+              this.level.player.y * this.tileSize + this.tileSize/2,
+              this.tileSize/3, 0, Math.PI * 2
+            );
+            this.ctx.fill();
+          }
+        }
+
+        /**
+         * Game controller
+         */
+        class Game {
+          constructor(canvasId) {
+            this.canvas = document.getElementById(canvasId);
+            this.renderer = new GameRenderer(this.canvas);
+            this.generator = new LevelGenerator();
+            this.level = null;
+            this.isAnimating = false;
+            
+            // Check URL parameters before setup
+            this.loadParamsFromURL();
+            
+            this.setupControls();
+            this.setupButtons();
+          }
+          
+          /**
+           * Load level parameters from URL if present
+           */
+          loadParamsFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            
+            if (params.has('seed')) {
+              // Extract core level parameters
+              this.generator.seed = params.get('seed');
+              
+              if (params.has('gridW')) this.generator.gridW = parseInt(params.get('gridW'));
+              if (params.has('gridH')) this.generator.gridH = parseInt(params.get('gridH'));
+              
+              // Load pathfinding parameters
+              if (params.has('nbSteps')) this.generator.nbSteps = parseInt(params.get('nbSteps'));
+              if (params.has('chanceToKeepForward')) this.generator.chanceToKeepForward = parseFloat(params.get('chanceToKeepForward'));
+              if (params.has('chanceToWalkOnFloor')) this.generator.chanceToWalkOnFloor = parseFloat(params.get('chanceToWalkOnFloor'));
+              if (params.has('chanceToGoBackwards')) this.generator.chanceToGoBackwards = parseFloat(params.get('chanceToGoBackwards'));
+              
+              // Load switch and boulder parameters
+              if (params.has('minNbSwitch')) this.generator.minNbSwitch = parseInt(params.get('minNbSwitch'));
+              if (params.has('maxNbSwitch')) this.generator.maxNbSwitch = parseInt(params.get('maxNbSwitch'));
+              if (params.has('chanceToCreateSwitch')) this.generator.chanceToCreateSwitch = parseFloat(params.get('chanceToCreateSwitch'));
+              if (params.has('minPull')) this.generator.minPull = parseInt(params.get('minPull'));
+              if (params.has('chanceToDropBoulder')) this.generator.chanceToDropBoulder = parseFloat(params.get('chanceToDropBoulder'));
+              
+              // Load floor and hole parameters
+              if (params.has('minNbFloorTiles')) this.generator.minNbFloorTiles = parseInt(params.get('minNbFloorTiles'));
+              if (params.has('maxNbFloorTiles')) this.generator.maxNbFloorTiles = parseInt(params.get('maxNbFloorTiles'));
+              if (params.has('chanceToCarveHole')) this.generator.chanceToCarveHole = parseFloat(params.get('chanceToCarveHole'));
+              
+              // Ensure we don't randomize the loaded parameters
+              this.generator.doRandom = false;
+            }
+          }
+          
+          /**
+           * Get URL with all current parameters
+           */
+          getLevelURL() {
+            const params = new URLSearchParams();
+            
+            // Add core level parameters
+            params.set('seed', this.generator.seed);
+            params.set('gridW', this.generator.gridW);
+            params.set('gridH', this.generator.gridH);
+            
+            // Add pathfinding parameters
+            params.set('nbSteps', this.generator.nbSteps);
+            params.set('chanceToKeepForward', this.generator.chanceToKeepForward);
+            params.set('chanceToWalkOnFloor', this.generator.chanceToWalkOnFloor);
+            params.set('chanceToGoBackwards', this.generator.chanceToGoBackwards);
+            
+            // Add switch and boulder parameters
+            params.set('minNbSwitch', this.generator.minNbSwitch);
+            params.set('maxNbSwitch', this.generator.maxNbSwitch);
+            params.set('chanceToCreateSwitch', this.generator.chanceToCreateSwitch);
+            params.set('minPull', this.generator.minPull);
+            params.set('chanceToDropBoulder', this.generator.chanceToDropBoulder);
+            
+            // Add floor and hole parameters
+            params.set('minNbFloorTiles', this.generator.minNbFloorTiles);
+            params.set('maxNbFloorTiles', this.generator.maxNbFloorTiles);
+            params.set('chanceToCarveHole', this.generator.chanceToCarveHole);
+            
+            return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+          }
+          
+          /**
+           * Copy level URL to clipboard
+           */
+          async copyLevelURL() {
+            const url = this.getLevelURL();
+            
+            try {
+              await navigator.clipboard.writeText(url);
+              this.showCopyNotification();
+            } catch (err) {
+              console.error('Failed to copy URL: ', err);
+              // Fallback for browsers that don't support clipboard API
+              const textarea = document.createElement('textarea');
+              textarea.value = url;
+              textarea.style.position = 'fixed';
+              document.body.appendChild(textarea);
+              textarea.focus();
+              textarea.select();
+              document.execCommand('copy');
+              document.body.removeChild(textarea);
+              this.showCopyNotification();
+            }
+          }
+          
+          /**
+           * Show the copy notification with animation
+           */
+          showCopyNotification() {
+            const notification = document.getElementById('copyNotification');
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+              notification.classList.remove('show');
+            }, 2000);
+          }
+          
+          async init(fromWin = false) {
+            // Show loading message
+            this.showLoadingMessage();
+            
+            // Generate level
+            this.generator.renderer = this.renderer;
+            this.level = await this.generator.generate();
+            
+            // Check if generation failed
+            if (this.level.generationFailed) {
+              this.showGenerationFailedMessage(this.level.attempts, this.level.seed);
+              return;
+            }
+            
+            // Update the renderer
+            this.renderer.setLevel(this.level);
+            
+            // Play the appear animation only if coming from a win
+            if (fromWin) {
+                await this.playAppearAnimation();
+            }
+            
+            // Update stats display
+            this.updateStats();
+            
+            // Update URL with current level parameters
+            const newUrl = this.getLevelURL();
+            window.history.replaceState({}, '', new URL(newUrl).search);
+          }
+          
+          /**
+           * Show message when level generation fails
+           */
+          showGenerationFailedMessage(attempts, seed) {
+            const ctx = this.canvas.getContext('2d');
+            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Make canvas big enough to display the message
+            this.canvas.width = 500;
+            this.canvas.height = 300;
+            
+            // Draw background
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Draw failure message
+            ctx.fillStyle = '#e74c3c';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Level Generation Failed', this.canvas.width / 2, 80);
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Arial';
+            ctx.fillText(`After ${attempts} attempts, no valid level could be generated`, this.canvas.width / 2, 120);
+            ctx.fillText('with the current parameters.', this.canvas.width / 2, 150);
+            
+            ctx.fillText('Try adjusting the parameters or use random generation.', this.canvas.width / 2, 190);
+            
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#999';
+            ctx.fillText(`Last seed tried: ${seed}`, this.canvas.width / 2, 240);
+          }
+          
+          showLoadingMessage() {
+            const ctx = this.canvas.getContext('2d');
+            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            ctx.fillStyle = '#fff';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Generating level...', this.canvas.width / 2, this.canvas.height / 2);
+          }
+          
+          updateStats() {
+            // Basic level info
+            document.getElementById('seedStat').textContent = this.level.seed;
+            document.getElementById('gridSizeStat').textContent = `${this.level.gridW} x ${this.level.gridH}`;
+            document.getElementById('switchesStat').textContent = this.level.switches.length;
+            
+            // Pathfinding parameters
+            document.getElementById('stepsStat').textContent = this.generator.nbSteps;
+            document.getElementById('keepForwardStat').textContent = this.generator.chanceToKeepForward.toFixed(1);
+            document.getElementById('walkOnFloorStat').textContent = this.generator.chanceToWalkOnFloor.toFixed(1);
+            document.getElementById('goBackwardsStat').textContent = this.generator.chanceToGoBackwards.toFixed(1);
+            
+            // Switches & Boulders parameters
+            document.getElementById('minSwitchStat').textContent = this.generator.minNbSwitch;
+            document.getElementById('maxSwitchStat').textContent = this.generator.maxNbSwitch;
+            document.getElementById('createSwitchStat').textContent = (this.generator.chanceToCreateSwitch * 100).toFixed(0) + '%';
+            document.getElementById('minPullStat').textContent = this.generator.minPull;
+            document.getElementById('dropBoulderStat').textContent = (this.generator.chanceToDropBoulder * 100).toFixed(0) + '%';
+            
+            // Floor & Holes parameters
+            document.getElementById('minFloorStat').textContent = this.generator.minNbFloorTiles;
+            document.getElementById('maxFloorStat').textContent = this.generator.maxNbFloorTiles;
+            document.getElementById('carveHoleStat').textContent = (this.generator.chanceToCarveHole * 100).toFixed(0) + '%';
+          }
+          
+          setupButtons() {
+            // New game button
+            document.getElementById('newGameBtn').addEventListener('click', () => {
+              if (this.isAnimating || this.generator.isGenerating) return;
+              this.generator.doRandom = true;
+              this.init(false);
+              
+              // Update URL without parameters for a new random level
+              window.history.replaceState({}, '', window.location.pathname);
+            });
+            
+            // Same parameters button
+            document.getElementById('sameParamsBtn').addEventListener('click', () => {
+              if (this.isAnimating || this.generator.isGenerating) return;
+              this.generator.doRandom = false;
+              this.init(false);
+            });
+            
+            // Copy level URL button
+            document.getElementById('copyLevelBtn').addEventListener('click', () => {
+              if (this.isAnimating || this.generator.isGenerating) return;
+              this.copyLevelURL();
+            });
+          }
+          
+          async playWinAnimation() {
+            this.isAnimating = true;
+            this.canvas.classList.add('win-animation');
+            
+            return new Promise(resolve => {
+              setTimeout(() => {
+                this.canvas.classList.remove('win-animation');
+                this.isAnimating = false;
+                resolve();
+              }, 500);
+            });
+          }
+          
+          async playAppearAnimation() {
+            this.isAnimating = true;
+            this.canvas.classList.add('appear-animation');
+            
+            return new Promise(resolve => {
+              setTimeout(() => {
+                this.canvas.classList.remove('appear-animation');
+                this.isAnimating = false;
+                resolve();
+              }, 500);
+            });
+          }
+          
+          setupControls() {
+            document.addEventListener('keydown', (e) => {
+              if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+              }
+              if (this.generator.isGenerating || this.isAnimating) return;
+              
+              let result = false;
+              
+              switch (e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'z':
+                  result = this.generator.movePlayer(0, -1);
+                  break;
+                case 'ArrowDown':
+                case 's':
+                  result = this.generator.movePlayer(0, 1);
+                  break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'q':
+                  result = this.generator.movePlayer(-1, 0);
+                  break;
+                case 'ArrowRight':
+                case 'd':
+                  result = this.generator.movePlayer(1, 0);
+                  break;
+                case 'r':
+                  this.generator.doRandom = false;
+                  this.init(false);
+                  break;
+                case 'n':
+                  this.generator.doRandom = true;
+                  this.init(false);
+                  break;
+              }
+              
+              if (result) {
+                this.renderer.render();
+                
+                if (result === 'win') {
+                  this.playWinAnimation().then(() => {
+                    this.generator.doRandom = true;
+                    this.init(true); // Only use animation when coming from a win
+                  });
+                }
+              }
+            });
+          }
+        }
+
+        class SavedLevelsManager {
+            constructor() {
+                this.storageKey = 'sokobanSavedLevels';
+                this.savedLevels = this.loadFromLocalStorage();
+            }
+
+            saveLevel(name, url) {
+                this.savedLevels.push({ name, url });
+                this.saveToLocalStorage();
+            }
+
+            deleteLevel(index) {
+                this.savedLevels.splice(index, 1);
+                this.saveToLocalStorage();
+            }
+
+            loadFromLocalStorage() {
+                const data = localStorage.getItem(this.storageKey);
+                return data ? JSON.parse(data) : [];
+            }
+
+            saveToLocalStorage() {
+                localStorage.setItem(this.storageKey, JSON.stringify(this.savedLevels));
+            }
+
+            exportToFile() {
+                const blob = new Blob([JSON.stringify(this.savedLevels, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'sokoban_saved_levels.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            importFromFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            if (Array.isArray(data)) {
+                                this.savedLevels = data;
+                                this.saveToLocalStorage();
+                                resolve();
+                            } else {
+                                reject(new Error('Invalid file format'));
+                            }
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    reader.onerror = () => reject(reader.error);
+                    reader.readAsText(file);
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedLevelsManager = new SavedLevelsManager();
+            const savedLevelsDialog = document.getElementById('savedLevelsDialog');
+            const savedLevelsList = document.getElementById('savedLevelsList');
+
+            function updateSavedLevelsList() {
+                savedLevelsList.innerHTML = '';
+                
+                if (savedLevelsManager.savedLevels.length === 0) {
+                    const emptyMessage = document.createElement('div');
+                    emptyMessage.className = 'empty-list-message';
+                    emptyMessage.innerHTML = '📭 No saved levels yet';
+                    savedLevelsList.appendChild(emptyMessage);
+                    return;
+                }
+                
+                savedLevelsManager.savedLevels.forEach((level, index) => {
+                    const li = document.createElement('li');
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'level-name';
+                    nameSpan.textContent = level.name;
+                    li.appendChild(nameSpan);
+                    
+                    const btnActions = document.createElement('div');
+                    btnActions.className = 'btn-actions';
+                    
+                    const loadButton = document.createElement('button');
+                    loadButton.className = 'dialog-btn load-btn';
+                    loadButton.innerHTML = '<span class="icon">▶️</span> Load';
+                    loadButton.addEventListener('click', () => {
+                        window.location.href = level.url;
+                    });
+                    
+                    const copyButton = document.createElement('button');
+                    copyButton.className = 'dialog-btn copy-btn';
+                    copyButton.innerHTML = '<span class="icon">📋</span> Copy';
+                    copyButton.addEventListener('click', async () => {
+                        try {
+                            await navigator.clipboard.writeText(level.url);
+                            alert('Level URL copied to clipboard!');
+                        } catch (err) {
+                            console.error('Failed to copy URL: ', err);
+                            alert('Failed to copy URL.');
+                        }
+                    });
+                    
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'dialog-btn delete-btn';
+                    deleteButton.innerHTML = '<span class="icon">🗑️</span> Delete';
+                    deleteButton.addEventListener('click', () => {
+                        if (confirm(`Are you sure you want to delete "${level.name}"?`)) {
+                            savedLevelsManager.deleteLevel(index);
+                            updateSavedLevelsList();
+                        }
+                    });
+                    
+                    btnActions.appendChild(loadButton);
+                    btnActions.appendChild(copyButton);
+                    btnActions.appendChild(deleteButton);
+                    li.appendChild(btnActions);
+                    
+                    savedLevelsList.appendChild(li);
+                });
+            }
+
+            document.getElementById('saveLevelBtn').addEventListener('click', () => {
+                const name = prompt('Enter a name for this level:');
+                if (name) {
+                    const url = window.location.href;
+                    savedLevelsManager.saveLevel(name, url);
+                    alert('Level saved!');
+                }
+            });
+
+            document.getElementById('showSavedLevelsBtn').addEventListener('click', () => {
+                savedLevelsDialog.showModal();
+                updateSavedLevelsList();
+            });
+
+            document.getElementById('closeSavedLevelsDialogBtn').addEventListener('click', () => {
+                savedLevelsDialog.close();
+            });
+
+            document.getElementById('exportDatabaseBtn').addEventListener('click', () => {
+                savedLevelsManager.exportToFile();
+            });
+
+            document.getElementById('importDatabaseBtn').addEventListener('click', () => {
+                const input = document.getElementById('importDatabaseInput');
+                input.click();
+                input.addEventListener('change', () => {
+                    const file = input.files[0];
+                    if (file) {
+                        savedLevelsManager.importFromFile(file)
+                            .then(() => {
+                                alert('Database imported successfully!');
+                                updateSavedLevelsList();
+                            })
+                            .catch((error) => {
+                                alert('Failed to import database: ' + error.message);
+                            });
+                    }
+                });
+            });
+
+            // Search functionality
+            document.getElementById('levelSearchInput').addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                filterSavedLevels(searchTerm);
+            });
+            
+            function filterSavedLevels(searchTerm) {
+                const items = savedLevelsList.querySelectorAll('li');
+                
+                if (items.length === 0) return;
+                
+                if (!searchTerm) {
+                    // If search is empty, show all items
+                    items.forEach(item => item.style.display = 'flex');
+                    return;
+                }
+                
+                let hasVisibleItems = false;
+                
+                items.forEach(item => {
+                    const levelName = item.querySelector('.level-name').textContent.toLowerCase();
+                    if (levelName.includes(searchTerm)) {
+                        item.style.display = 'flex';
+                        hasVisibleItems = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                // If no items match search, show message
+                if (!hasVisibleItems) {
+                    if (!document.querySelector('.search-no-results')) {
+                        const noResultsMsg = document.createElement('div');
+                        noResultsMsg.className = 'empty-list-message search-no-results';
+                        noResultsMsg.innerHTML = '🔍 No levels match your search';
+                        savedLevelsList.appendChild(noResultsMsg);
+                    }
+                } else {
+                    // Remove no results message if it exists
+                    const noResultsMsg = document.querySelector('.search-no-results');
+                    if (noResultsMsg) {
+                        noResultsMsg.remove();
+                    }
+                }
+            }
+
+            const generationParamsDialog = document.getElementById('generationParamsDialog');
+            const paramsDialogBtn = document.getElementById('showParamsDialogBtn');
+            const closeParamsDialogBtn = document.getElementById('closeParamsDialogBtn');
+            const resetDefaultsBtn = document.getElementById('resetDefaultsBtn');
+            const applyParamsBtn = document.getElementById('applyParamsBtn');
+            
+            // Parameter slider value displays
+            const sliderValueDisplays = {
+                'chanceToCreateSwitch': document.getElementById('chanceToCreateSwitchValue'),
+                'chanceToDropBoulder': document.getElementById('chanceToDropBoulderValue'),
+                'chanceToCarveHole': document.getElementById('chanceToCarveHoleValue')
+            };
+            
+            // Default parameter values
+            const defaultParams = {
+                gridW: 10,
+                gridH: 5,
+                nbSteps: 230,
+                chanceToKeepForward: 1.7,
+                chanceToWalkOnFloor: 3.3,
+                chanceToGoBackwards: 0.1,
+                minNbSwitch: 7,
+                maxNbSwitch: 150,
+                chanceToCreateSwitch: 70, // percentage for slider
+                minPull: 3,
+                chanceToDropBoulder: 50, // percentage for slider
+                minNbFloorTiles: 13,
+                maxNbFloorTiles: 47,
+                chanceToCarveHole: 60 // percentage for slider
+            };
+            
+            // Update sliders' value display when they change
+            document.getElementById('chanceToCreateSwitch').addEventListener('input', e => {
+                sliderValueDisplays.chanceToCreateSwitch.textContent = `${e.target.value}%`;
+            });
+            
+            document.getElementById('chanceToDropBoulder').addEventListener('input', e => {
+                sliderValueDisplays.chanceToDropBoulder.textContent = `${e.target.value}%`;
+            });
+            
+            document.getElementById('chanceToCarveHole').addEventListener('input', e => {
+                sliderValueDisplays.chanceToCarveHole.textContent = `${e.target.value}%`;
+            });
+            
+            // Fill form with current game parameters
+            function populateParamsForm() {
+                // Get current game instance
+                const gameInstance = window.game;
+                if (!gameInstance) return;
+                
+                const gen = gameInstance.generator;
+                
+                // Set form values from current generator configuration
+                document.getElementById('gridW').value = gen.gridW;
+                document.getElementById('gridH').value = gen.gridH;
+                document.getElementById('nbSteps').value = gen.nbSteps;
+                document.getElementById('chanceToKeepForward').value = gen.chanceToKeepForward;
+                document.getElementById('chanceToWalkOnFloor').value = gen.chanceToWalkOnFloor;
+                document.getElementById('chanceToGoBackwards').value = gen.chanceToGoBackwards;
+                document.getElementById('minNbSwitch').value = gen.minNbSwitch;
+                document.getElementById('maxNbSwitch').value = gen.maxNbSwitch;
+                document.getElementById('chanceToCreateSwitch').value = Math.round(gen.chanceToCreateSwitch * 100);
+                sliderValueDisplays.chanceToCreateSwitch.textContent = `${Math.round(gen.chanceToCreateSwitch * 100)}%`;
+                document.getElementById('minPull').value = gen.minPull;
+                document.getElementById('chanceToDropBoulder').value = Math.round(gen.chanceToDropBoulder * 100);
+                sliderValueDisplays.chanceToDropBoulder.textContent = `${Math.round(gen.chanceToDropBoulder * 100)}%`;
+                document.getElementById('minNbFloorTiles').value = gen.minNbFloorTiles;
+                document.getElementById('maxNbFloorTiles').value = gen.maxNbFloorTiles;
+                document.getElementById('chanceToCarveHole').value = Math.round(gen.chanceToCarveHole * 100);
+                sliderValueDisplays.chanceToCarveHole.textContent = `${Math.round(gen.chanceToCarveHole * 100)}%`;
+            }
+            
+            // Reset form to default values
+            function resetParamsToDefaults() {
+                document.getElementById('gridW').value = defaultParams.gridW;
+                document.getElementById('gridH').value = defaultParams.gridH;
+                document.getElementById('nbSteps').value = defaultParams.nbSteps;
+                document.getElementById('chanceToKeepForward').value = defaultParams.chanceToKeepForward;
+                document.getElementById('chanceToWalkOnFloor').value = defaultParams.chanceToWalkOnFloor;
+                document.getElementById('chanceToGoBackwards').value = defaultParams.chanceToGoBackwards;
+                document.getElementById('minNbSwitch').value = defaultParams.minNbSwitch;
+                document.getElementById('maxNbSwitch').value = defaultParams.maxNbSwitch;
+                document.getElementById('chanceToCreateSwitch').value = defaultParams.chanceToCreateSwitch;
+                sliderValueDisplays.chanceToCreateSwitch.textContent = `${defaultParams.chanceToCreateSwitch}%`;
+                document.getElementById('minPull').value = defaultParams.minPull;
+                document.getElementById('chanceToDropBoulder').value = defaultParams.chanceToDropBoulder;
+                sliderValueDisplays.chanceToDropBoulder.textContent = `${defaultParams.chanceToDropBoulder}%`;
+                document.getElementById('minNbFloorTiles').value = defaultParams.minNbFloorTiles;
+                document.getElementById('maxNbFloorTiles').value = defaultParams.maxNbFloorTiles;
+                document.getElementById('chanceToCarveHole').value = defaultParams.chanceToCarveHole;
+                sliderValueDisplays.chanceToCarveHole.textContent = `${defaultParams.chanceToCarveHole}%`;
+            }
+            
+            // Apply form values to the game
+            function applyParamsToGame() {
+                const gameInstance = window.game;
+                if (!gameInstance) return;
+                
+                // Get values from form
+                const params = {
+                    gridW: parseInt(document.getElementById('gridW').value),
+                    gridH: parseInt(document.getElementById('gridH').value),
+                    nbSteps: parseInt(document.getElementById('nbSteps').value),
+                    chanceToKeepForward: parseFloat(document.getElementById('chanceToKeepForward').value),
+                    chanceToWalkOnFloor: parseFloat(document.getElementById('chanceToWalkOnFloor').value),
+                    chanceToGoBackwards: parseFloat(document.getElementById('chanceToGoBackwards').value),
+                    minNbSwitch: parseInt(document.getElementById('minNbSwitch').value),
+                    maxNbSwitch: parseInt(document.getElementById('maxNbSwitch').value),
+                    chanceToCreateSwitch: parseInt(document.getElementById('chanceToCreateSwitch').value) / 100,
+                    minPull: parseInt(document.getElementById('minPull').value),
+                    chanceToDropBoulder: parseInt(document.getElementById('chanceToDropBoulder').value) / 100,
+                    minNbFloorTiles: parseInt(document.getElementById('minNbFloorTiles').value),
+                    maxNbFloorTiles: parseInt(document.getElementById('maxNbFloorTiles').value),
+                    chanceToCarveHole: parseInt(document.getElementById('chanceToCarveHole').value) / 100
+                };
+                
+                // Generate a new random seed but keep the parameters
+                gameInstance.generator.seed = Math.floor(Math.random() * 1000000000000000).toString();
+                
+                // Apply values to generator
+                const gen = gameInstance.generator;
+                Object.keys(params).forEach(key => {
+                    gen[key] = params[key];
+                });
+                
+                // Set to not randomize parameters but still use the new seed
+                gen.doRandom = false;
+                
+                // Generate new level with custom params
+                gameInstance.init(false);
+            }
+            
+            // Dialog event listeners
+            paramsDialogBtn.addEventListener('click', () => {
+                populateParamsForm();
+                generationParamsDialog.showModal();
+            });
+            
+            closeParamsDialogBtn.addEventListener('click', () => {
+                generationParamsDialog.close();
+            });
+            
+            resetDefaultsBtn.addEventListener('click', () => {
+                resetParamsToDefaults();
+            });
+            
+            applyParamsBtn.addEventListener('click', () => {
+                applyParamsToGame();
+                generationParamsDialog.close();
+            });
+        });
+
+        // Initialize the game when the page loads
+        window.onload = () => {
+          const game = new Game('gameCanvas');
+          window.game = game; // Expose game instance globally for parameter dialog
+          game.init();
+        };
+    </script>
+</body>
+</html>
