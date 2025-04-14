@@ -140,7 +140,7 @@ class LevelGenerator {
   randomizeParameters() {
     // Only randomize unlocked parameters
     if (!this.lockedParams.chanceToCarveHole) {
-      this.chanceToCarveHole = Math.floor(Math.random() * 0.6 * 100) / 100;
+      this.chanceToCarveHole = Math.floor(Math.random() * 100) / 100;
     }
 
     if (!this.lockedParams.chanceToDropBoulder) {
@@ -358,6 +358,17 @@ class LevelGenerator {
           } else {
             // Make it a solo boulder (no linked switch)
             boulder.switchUID = -1;
+
+            if (this.random.next() < this.chanceToCarveHole) {
+              this.grid[wallY][wallX] = {
+                x: wallX,
+                y: wallY,
+                wall: false,
+                hole: true,
+                lockedByGen: false,
+                type: "hole",
+              };
+            }
           }
 
           this.boulders.push(boulder);
