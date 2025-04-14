@@ -183,6 +183,9 @@ class Game {
     // Update URL with current level parameters
     const newUrl = this.getLevelURL();
     window.history.replaceState({}, "", new URL(newUrl).search);
+
+    // Update solution button state - always enabled since we have the generation path
+    this.updateSolutionButtonState();
   }
 
   /**
@@ -314,6 +317,12 @@ class Game {
       if (this.isAnimating || this.generator.isGenerating) return;
       this.copyLevelURL();
     });
+
+    // Play solution button
+    document.getElementById("playSolutionBtn").addEventListener("click", () => {
+      if (this.isAnimating || this.generator.isGenerating) return;
+      this.playSolution();
+    });
   }
 
   async playWinAnimation() {
@@ -378,10 +387,19 @@ class Game {
           this.generator.doRandom = true;
           this.init(false);
           break;
+        case "p":
+          // Shortcut for playing solution
+          if (this.generator.playerMoves.length > 0) {
+            this.playSolution();
+          }
+          break;
       }
 
       if (result) {
         this.renderer.render();
+
+        // Update solution button state whenever a move is made
+        this.updateSolutionButtonState();
 
         if (result === "win") {
           this.playWinAnimation().then(() => {
@@ -391,6 +409,68 @@ class Game {
         }
       }
     });
+  }
+
+  /**
+   * Update the state of the Play Solution button
+   */
+  updateSolutionButtonState() {
+    const solutionButton = document.getElementById("playSolutionBtn");
+    if (
+      this.generator.generationMoves &&
+      this.generator.generationMoves.length > 0
+    ) {
+      solutionButton.disabled = false;
+      solutionButton.classList.remove("disabled");
+    } else {
+      solutionButton.disabled = true;
+      solutionButton.classList.add("disabled");
+    }
+  }
+
+  /**
+   * Play back the solution
+   */
+  async playSolution() {
+    if (
+      !this.generator.generationMoves ||
+      this.generator.generationMoves.length === 0
+    )
+      return;
+
+    // reset level first
+    this.generator.doRandom = false;
+    this.init(false);
+
+    this.isAnimating = true;
+
+    // Disable buttons during playback
+    const buttons = document.querySelectorAll(".controls button");
+    buttons.forEach((btn) => (btn.disabled = true));
+
+    try {
+      await this.generator.playSolution(
+        // Update the display after each step
+        () => this.renderer.render(),
+        // When complete, check if we should generate a new level
+        (finishedCorrectly) => {
+          this.isAnimating = false;
+          buttons.forEach((btn) => (btn.disabled = false));
+
+          if (finishedCorrectly) {
+            // Generate new level without win animation
+            this.generator.doRandom = false;
+            this.init(false);
+          }
+        },
+        // Playback speed in milliseconds
+        50
+      );
+    } catch (error) {
+      console.error("Error playing solution:", error);
+      this.isAnimating = false;
+      buttons.forEach((btn) => (btn.disabled = false));
+    }
   }
 }
 

@@ -13,16 +13,16 @@ class LevelGenerator {
     this.chanceToKeepForward = config.chanceToKeepForward || 1.7;
     this.chanceToWalkOnFloor = config.chanceToWalkOnFloor || 3.3;
     this.chanceToGoBackwards = config.chanceToGoBackwards || 0.1;
-    this.nbSteps = config.nbSteps || 230;
+    this.nbSteps = config.nbSteps || 70;
     this.maxNbSwitch = config.maxNbSwitch || 150;
-    this.minNbSwitch = config.minNbSwitch || 7;
+    this.minNbSwitch = config.minNbSwitch || 3;
     this.minPull = config.minPull || 3;
     this.chanceToCreateSwitch = config.chanceToCreateSwitch || 0.7;
     this.chanceToDropBoulder = config.chanceToDropBoulder || 0.5;
     this.minNbFloorTiles = config.minNbFloorTiles || 13;
-    this.maxNbFloorTiles = config.maxNbFloorTiles || 47;
+    this.maxNbFloorTiles = config.maxNbFloorTiles || 33;
     this.chanceToCarveHole = config.chanceToCarveHole || 1;
-    this.minSoloBoulders = config.minSoloBoulders || 2;
+    this.minSoloBoulders = config.minSoloBoulders || 4;
     this.chanceToSpawnSoloBoulder = config.chanceToSpawnSoloBoulder || 0.3;
 
     // Track locked parameters that shouldn't be randomized
@@ -49,6 +49,11 @@ class LevelGenerator {
     this.exit = null;
     this.boulders = [];
     this.switches = [];
+
+    // Track generation path for solution playback
+    this.generationMoves = [];
+    this.isPlayingSolution = false;
+    this.reachedExit = false;
   }
 
   /**
@@ -144,7 +149,7 @@ class LevelGenerator {
     }
 
     if (!this.lockedParams.minPull) {
-      this.minPull = Math.floor(Math.random() * 4) + 2;
+      this.minPull = Math.floor(Math.random() * 3) + 1;
     }
 
     if (!this.lockedParams.gridH) {
@@ -221,8 +226,19 @@ class LevelGenerator {
    * Generate pathways by walking through the level
    */
   async generatePathways() {
+    // Clear previous generation moves
+    this.generationMoves = [];
+
     for (let i = 0; i < this.nbSteps; i++) {
-      this.doStep();
+      const didStep = this.doStep();
+
+      if (didStep) {
+        // Record the movement direction
+        const dx = this.player.x - this.player.prevX;
+        const dy = this.player.y - this.player.prevY;
+        this.generationMoves.push({ x: dx, y: dy });
+      }
+
       if (this.renderer) {
         this.renderer.setLevel({
           grid: this.grid,
@@ -233,7 +249,6 @@ class LevelGenerator {
         });
         this.renderer.render();
       }
-      //   await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 
@@ -243,7 +258,7 @@ class LevelGenerator {
   doStep() {
     // Get a valid tile to move to
     const tile = this.pickTile();
-    if (!tile) return;
+    if (!tile) return false;
 
     // Update player position
     this.player.prevX = this.player.x;
@@ -351,6 +366,8 @@ class LevelGenerator {
         }
       }
     }
+
+    return true;
   }
 
   /**
@@ -685,9 +702,86 @@ class LevelGenerator {
       this.exit.y === targetY &&
       this.isLevelComplete()
     ) {
+      if (this.isPlayingSolution) {
+        // When playing solution, just record that we reached the exit but don't win yet
+        this.reachedExit = true;
+        return true;
+      }
       return "win";
     }
 
     return true;
+  }
+
+  /**
+   * Play back the solution (generation path in reverse)
+   * @param {Function} onStep - Callback function called after each step
+   * @param {Function} onComplete - Callback function called when solution playback completes
+   * @param {number} speed - Delay between steps in milliseconds
+   */
+  async playSolution(onStep, onComplete, speed = 200) {
+    if (this.generationMoves.length === 0) {
+      if (onComplete) onComplete(false);
+      return;
+    }
+
+    // Prepare for solution playback - reset player to starting position
+    const originalPlayerX = this.player.x;
+    const originalPlayerY = this.player.y;
+    const originalBoulders = JSON.parse(JSON.stringify(this.boulders));
+
+    // Reset player to exit position (where generation started)
+    // this.player.x = this.exit.x;
+    // this.player.y = this.exit.y;
+    // this.player.prevX = this.exit.x;
+    // this.player.prevY = this.exit.y;
+
+    this.isPlayingSolution = true;
+    this.reachedExit = false;
+
+    const moves = this.generationMoves.slice().reverse();
+
+    try {
+      // Play through the solution step by step
+      for (const move of moves) {
+        // Make the move
+        const result = this.movePlayer(-move.x, -move.y);
+
+        // Render the step
+        if (onStep) onStep();
+
+        // Wait for specified delay
+        await new Promise((resolve) => setTimeout(resolve, speed));
+      }
+
+      // Check if we've finished at the correct spot
+      const finishedCorrectly =
+        this.player.x === this.exit.x && this.player.y === this.exit.y;
+
+      // Reset playback state
+      this.isPlayingSolution = false;
+
+      // Call completion callback
+      if (onComplete) onComplete(finishedCorrectly);
+    } catch (error) {
+      console.error("Error during solution playback:", error);
+
+      // Reset player position and state
+      this.player.x = originalPlayerX;
+      this.player.y = originalPlayerY;
+      this.player.prevX = originalPlayerX;
+      this.player.prevY = originalPlayerY;
+      this.boulders = originalBoulders;
+      this.isPlayingSolution = false;
+
+      if (onComplete) onComplete(false);
+    }
+  }
+
+  /**
+   * Reset the player move history
+   */
+  resetMoves() {
+    // We don't need to reset generation moves, they're set during generation
   }
 }

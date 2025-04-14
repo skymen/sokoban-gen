@@ -136,6 +136,7 @@ button:hover {
   justify-content: center;
   gap: 15px;
   margin-top: 5px;
+  flex-wrap: wrap;
 }
 
 @keyframes complete-animation {
@@ -852,4 +853,20 @@ dialog#generationParamsDialog {
   margin-top: 25px;
   padding-top: 15px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.play-button {
+  background-color: #27ae60;
+  color: white;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.play-button:hover:not(.disabled) {
+  background-color: #2ecc71;
+}
+
+.play-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #7f8c8d;
 }
