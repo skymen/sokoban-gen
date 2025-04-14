@@ -62,7 +62,7 @@ class LevelGenerator {
   async generate() {
     this.isGenerating = true;
     let attempts = 0;
-    const maxAttempts = 5000;
+    const maxAttempts = 10000;
 
     if (this.doRandom) {
       this.randomizeParameters();
