@@ -389,7 +389,7 @@ class Game {
           break;
         case "p":
           // Shortcut for playing solution
-          if (this.generator.playerMoves.length > 0) {
+          if (this.generator.generationMoves.length > 0) {
             this.playSolution();
           }
           break;
