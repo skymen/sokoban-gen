@@ -1,545 +1,4 @@
 /**
- * Custom Dialog System
- */
-class DialogManager {
-  constructor() {
-    this.dialogContainer = document.getElementById("customDialogContainer");
-    this.dialogTitle = document.getElementById("customDialogTitle");
-    this.dialogContent = document.getElementById("customDialogContent");
-    this.dialogInput = document.getElementById("customDialogInput");
-    this.dialogInputField = document.getElementById("customDialogInputField");
-    this.dialogCancelBtn = document.getElementById("customDialogCancelBtn");
-    this.dialogConfirmBtn = document.getElementById("customDialogConfirmBtn");
-
-    this.resolvePromise = null;
-    this.setupEventListeners();
-  }
-
-  setupEventListeners() {
-    // Close dialog on cancel button click
-    this.dialogCancelBtn.addEventListener("click", () => {
-      this.close(false);
-    });
-
-    // Confirm dialog on confirm button click
-    this.dialogConfirmBtn.addEventListener("click", () => {
-      this.close(true);
-    });
-
-    // Close dialog when clicking outside (optional)
-    this.dialogContainer.addEventListener("click", (e) => {
-      if (e.target === this.dialogContainer) {
-        this.close(false);
-      }
-    });
-
-    // Handle enter key in input field
-    this.dialogInputField.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        this.close(true);
-      }
-    });
-  }
-
-  /**
-   * Show an alert dialog
-   * @param {string} title - The dialog title
-   * @param {string} message - The dialog message
-   * @returns {Promise} Resolves when dialog is closed
-   */
-  alert(title, message) {
-    return this.showDialog({
-      title,
-      content: message,
-      showCancel: false,
-      confirmText: "OK",
-    });
-  }
-
-  /**
-   * Show a confirmation dialog
-   * @param {string} title - The dialog title
-   * @param {string} message - The dialog message
-   * @param {string} confirmText - Text for confirm button
-   * @returns {Promise<boolean>} Resolves with true if confirmed, false otherwise
-   */
-  confirm(title, message, confirmText = "OK") {
-    return this.showDialog({
-      title,
-      content: message,
-      confirmText,
-      cancelText: "Cancel",
-      confirmButtonClass: "danger",
-    });
-  }
-
-  /**
-   * Show a prompt dialog
-   * @param {string} title - The dialog title
-   * @param {string} message - The dialog message
-   * @param {string} defaultValue - Default value for the input field
-   * @returns {Promise<string|null>} Resolves with input value or null if canceled
-   */
-  prompt(title, message, defaultValue = "") {
-    return this.showDialog({
-      title,
-      content: message,
-      showInput: true,
-      inputValue: defaultValue,
-    }).then((confirmed) => {
-      if (confirmed) {
-        return this.dialogInputField.value;
-      }
-      return null;
-    });
-  }
-
-  /**
-   * Show dialog with custom configuration
-   * @param {Object} config - Dialog configuration
-   * @returns {Promise<boolean>} Resolves with true if confirmed, false otherwise
-   */
-  showDialog(config) {
-    const {
-      title = "Dialog",
-      content = "",
-      showCancel = true,
-      showInput = false,
-      inputValue = "",
-      confirmText = "OK",
-      cancelText = "Cancel",
-      confirmButtonClass = "primary",
-    } = config;
-
-    // Set dialog content
-    this.dialogTitle.textContent = title;
-    this.dialogContent.textContent = content;
-
-    // Configure buttons
-    this.dialogConfirmBtn.textContent = confirmText;
-    this.dialogCancelBtn.textContent = cancelText;
-    this.dialogCancelBtn.style.display = showCancel ? "block" : "none";
-
-    // Set confirm button class
-    this.dialogConfirmBtn.className = `custom-dialog-btn ${confirmButtonClass}`;
-
-    // Configure input
-    this.dialogInput.style.display = showInput ? "block" : "none";
-    if (showInput) {
-      this.dialogInputField.value = inputValue;
-      // Focus the input field after dialog is visible
-      setTimeout(() => this.dialogInputField.focus(), 100);
-    }
-
-    // Show dialog
-    this.dialogContainer.classList.add("show");
-
-    // Return promise that resolves when dialog is closed
-    return new Promise((resolve) => {
-      this.resolvePromise = resolve;
-    });
-  }
-
-  /**
-   * Close the dialog
-   * @param {boolean} result - The result to resolve the promise with
-   */
-  close(result) {
-    this.dialogContainer.classList.remove("show");
-
-    if (this.resolvePromise) {
-      this.resolvePromise(result);
-      this.resolvePromise = null;
-    }
-  }
-}
-
-// Initialize the global dialog manager
-let dialogManager;
-document.addEventListener("DOMContentLoaded", () => {
-  dialogManager = new DialogManager();
-});
-
-/**
- * Game controller
- */
-class Game {
-  constructor(canvasId) {
-    this.canvas = document.getElementById(canvasId);
-    this.renderer = new GameRenderer(this.canvas);
-    this.generator = new LevelGenerator();
-    this.level = null;
-    this.isAnimating = false;
-
-    // Check URL parameters before setup
-    this.loadParamsFromURL();
-
-    this.setupControls();
-    this.setupButtons();
-  }
-
-  /**
-   * Load level parameters from URL if present
-   */
-  loadParamsFromURL() {
-    const params = new URLSearchParams(window.location.search);
-
-    if (params.has("seed")) {
-      // Extract core level parameters
-      this.generator.seed = params.get("seed");
-
-      if (params.has("gridW"))
-        this.generator.gridW = parseInt(params.get("gridW"));
-      if (params.has("gridH"))
-        this.generator.gridH = parseInt(params.get("gridH"));
-
-      // Load pathfinding parameters
-      if (params.has("nbSteps"))
-        this.generator.nbSteps = parseInt(params.get("nbSteps"));
-      if (params.has("chanceToKeepForward"))
-        this.generator.chanceToKeepForward = parseFloat(
-          params.get("chanceToKeepForward")
-        );
-      if (params.has("chanceToWalkOnFloor"))
-        this.generator.chanceToWalkOnFloor = parseFloat(
-          params.get("chanceToWalkOnFloor")
-        );
-      if (params.has("chanceToGoBackwards"))
-        this.generator.chanceToGoBackwards = parseFloat(
-          params.get("chanceToGoBackwards")
-        );
-
-      // Load switch and boulder parameters
-      if (params.has("minNbSwitch"))
-        this.generator.minNbSwitch = parseInt(params.get("minNbSwitch"));
-      if (params.has("maxNbSwitch"))
-        this.generator.maxNbSwitch = parseInt(params.get("maxNbSwitch"));
-      if (params.has("chanceToCreateSwitch"))
-        this.generator.chanceToCreateSwitch = parseFloat(
-          params.get("chanceToCreateSwitch")
-        );
-      if (params.has("minPull"))
-        this.generator.minPull = parseInt(params.get("minPull"));
-      if (params.has("chanceToDropBoulder"))
-        this.generator.chanceToDropBoulder = parseFloat(
-          params.get("chanceToDropBoulder")
-        );
-
-      // Load floor and hole parameters
-      if (params.has("minNbFloorTiles"))
-        this.generator.minNbFloorTiles = parseInt(
-          params.get("minNbFloorTiles")
-        );
-      if (params.has("maxNbFloorTiles"))
-        this.generator.maxNbFloorTiles = parseInt(
-          params.get("maxNbFloorTiles")
-        );
-      if (params.has("chanceToCarveHole"))
-        this.generator.chanceToCarveHole = parseFloat(
-          params.get("chanceToCarveHole")
-        );
-
-      // Ensure we don't randomize the loaded parameters
-      this.generator.doRandom = false;
-    }
-  }
-
-  /**
-   * Get URL with all current parameters
-   */
-  getLevelURL() {
-    const params = new URLSearchParams();
-
-    // Add core level parameters
-    params.set("seed", this.generator.seed);
-    params.set("gridW", this.generator.gridW);
-    params.set("gridH", this.generator.gridH);
-
-    // Add pathfinding parameters
-    params.set("nbSteps", this.generator.nbSteps);
-    params.set("chanceToKeepForward", this.generator.chanceToKeepForward);
-    params.set("chanceToWalkOnFloor", this.generator.chanceToWalkOnFloor);
-    params.set("chanceToGoBackwards", this.generator.chanceToGoBackwards);
-
-    // Add switch and boulder parameters
-    params.set("minNbSwitch", this.generator.minNbSwitch);
-    params.set("maxNbSwitch", this.generator.maxNbSwitch);
-    params.set("chanceToCreateSwitch", this.generator.chanceToCreateSwitch);
-    params.set("minPull", this.generator.minPull);
-    params.set("chanceToDropBoulder", this.generator.chanceToDropBoulder);
-
-    // Add floor and hole parameters
-    params.set("minNbFloorTiles", this.generator.minNbFloorTiles);
-    params.set("maxNbFloorTiles", this.generator.maxNbFloorTiles);
-    params.set("chanceToCarveHole", this.generator.chanceToCarveHole);
-
-    return `${window.location.origin}${
-      window.location.pathname
-    }?${params.toString()}`;
-  }
-
-  /**
-   * Copy level URL to clipboard
-   */
-  async copyLevelURL() {
-    const url = this.getLevelURL();
-
-    try {
-      await navigator.clipboard.writeText(url);
-      this.showCopyNotification();
-    } catch (err) {
-      console.error("Failed to copy URL: ", err);
-      // Fallback for browsers that don't support clipboard API
-      const textarea = document.createElement("textarea");
-      textarea.value = url;
-      textarea.style.position = "fixed";
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      this.showCopyNotification();
-    }
-  }
-
-  /**
-   * Show the copy notification with animation
-   */
-  showCopyNotification() {
-    const notification = document.getElementById("copyNotification");
-    notification.classList.add("show");
-
-    setTimeout(() => {
-      notification.classList.remove("show");
-    }, 2000);
-  }
-
-  async init(fromWin = false) {
-    // Show loading message
-    this.showLoadingMessage();
-
-    // Generate level
-    this.generator.renderer = this.renderer;
-    this.level = await this.generator.generate();
-
-    // Check if generation failed
-    if (this.level.generationFailed) {
-      this.showGenerationFailedMessage(this.level.attempts, this.level.seed);
-      return;
-    }
-
-    // Update the renderer
-    this.renderer.setLevel(this.level);
-
-    // Play the appear animation only if coming from a win
-    if (fromWin) {
-      await this.playAppearAnimation();
-    }
-
-    // Update stats display
-    this.updateStats();
-
-    // Update URL with current level parameters
-    const newUrl = this.getLevelURL();
-    window.history.replaceState({}, "", new URL(newUrl).search);
-  }
-
-  /**
-   * Show message when level generation fails
-   */
-  showGenerationFailedMessage(attempts, seed) {
-    const ctx = this.canvas.getContext("2d");
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Make canvas big enough to display the message
-    this.canvas.width = 500;
-    this.canvas.height = 300;
-
-    // Draw background
-    ctx.fillStyle = "#222";
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Draw failure message
-    ctx.fillStyle = "#e74c3c";
-    ctx.font = "bold 24px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText("Level Generation Failed", this.canvas.width / 2, 80);
-
-    ctx.fillStyle = "#fff";
-    ctx.font = "16px Arial";
-    ctx.fillText(
-      `After ${attempts} attempts, no valid level could be generated`,
-      this.canvas.width / 2,
-      120
-    );
-    ctx.fillText("with the current parameters.", this.canvas.width / 2, 150);
-
-    ctx.fillText(
-      "Try adjusting the parameters or use random generation.",
-      this.canvas.width / 2,
-      190
-    );
-
-    ctx.font = "14px Arial";
-    ctx.fillStyle = "#999";
-    ctx.fillText(`Last seed tried: ${seed}`, this.canvas.width / 2, 240);
-  }
-
-  showLoadingMessage() {
-    const ctx = this.canvas.getContext("2d");
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.fillStyle = "#fff";
-    ctx.font = "20px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(
-      "Generating level...",
-      this.canvas.width / 2,
-      this.canvas.height / 2
-    );
-  }
-
-  updateStats() {
-    // Basic level info
-    document.getElementById("seedStat").textContent = this.level.seed;
-    document.getElementById(
-      "gridSizeStat"
-    ).textContent = `${this.level.gridW} x ${this.level.gridH}`;
-    document.getElementById("switchesStat").textContent =
-      this.level.switches.length;
-
-    // Pathfinding parameters
-    document.getElementById("stepsStat").textContent = this.generator.nbSteps;
-    document.getElementById("keepForwardStat").textContent =
-      this.generator.chanceToKeepForward.toFixed(1);
-    document.getElementById("walkOnFloorStat").textContent =
-      this.generator.chanceToWalkOnFloor.toFixed(1);
-    document.getElementById("goBackwardsStat").textContent =
-      this.generator.chanceToGoBackwards.toFixed(1);
-
-    // Switches & Boulders parameters
-    document.getElementById("minSwitchStat").textContent =
-      this.generator.minNbSwitch;
-    document.getElementById("maxSwitchStat").textContent =
-      this.generator.maxNbSwitch;
-    document.getElementById("createSwitchStat").textContent =
-      (this.generator.chanceToCreateSwitch * 100).toFixed(0) + "%";
-    document.getElementById("minPullStat").textContent = this.generator.minPull;
-    document.getElementById("dropBoulderStat").textContent =
-      (this.generator.chanceToDropBoulder * 100).toFixed(0) + "%";
-
-    // Floor & Holes parameters
-    document.getElementById("minFloorStat").textContent =
-      this.generator.minNbFloorTiles;
-    document.getElementById("maxFloorStat").textContent =
-      this.generator.maxNbFloorTiles;
-    document.getElementById("carveHoleStat").textContent =
-      (this.generator.chanceToCarveHole * 100).toFixed(0) + "%";
-  }
-
-  setupButtons() {
-    // New game button
-    document.getElementById("newGameBtn").addEventListener("click", () => {
-      if (this.isAnimating || this.generator.isGenerating) return;
-      this.generator.doRandom = true;
-      this.init(false);
-
-      // Update URL without parameters for a new random level
-      window.history.replaceState({}, "", window.location.pathname);
-    });
-
-    // Same parameters button
-    document.getElementById("sameParamsBtn").addEventListener("click", () => {
-      if (this.isAnimating || this.generator.isGenerating) return;
-      this.generator.doRandom = false;
-      this.init(false);
-    });
-
-    // Copy level URL button
-    document.getElementById("copyLevelBtn").addEventListener("click", () => {
-      if (this.isAnimating || this.generator.isGenerating) return;
-      this.copyLevelURL();
-    });
-  }
-
-  async playWinAnimation() {
-    this.isAnimating = true;
-    this.canvas.classList.add("win-animation");
-
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        this.canvas.classList.remove("win-animation");
-        this.isAnimating = false;
-        resolve();
-      }, 500);
-    });
-  }
-
-  async playAppearAnimation() {
-    this.isAnimating = true;
-    this.canvas.classList.add("appear-animation");
-
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        this.canvas.classList.remove("appear-animation");
-        this.isAnimating = false;
-        resolve();
-      }, 500);
-    });
-  }
-
-  setupControls() {
-    document.addEventListener("keydown", (e) => {
-      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-        e.preventDefault();
-      }
-      if (this.generator.isGenerating || this.isAnimating) return;
-
-      let result = false;
-
-      switch (e.key) {
-        case "ArrowUp":
-        case "w":
-        case "z":
-          result = this.generator.movePlayer(0, -1);
-          break;
-        case "ArrowDown":
-        case "s":
-          result = this.generator.movePlayer(0, 1);
-          break;
-        case "ArrowLeft":
-        case "a":
-        case "q":
-          result = this.generator.movePlayer(-1, 0);
-          break;
-        case "ArrowRight":
-        case "d":
-          result = this.generator.movePlayer(1, 0);
-          break;
-        case "r":
-          this.generator.doRandom = false;
-          this.init(false);
-          break;
-        case "n":
-          this.generator.doRandom = true;
-          this.init(false);
-          break;
-      }
-
-      if (result) {
-        this.renderer.render();
-
-        if (result === "win") {
-          this.playWinAnimation().then(() => {
-            this.generator.doRandom = true;
-            this.init(true); // Only use animation when coming from a win
-          });
-        }
-      }
-    });
-  }
-}
-
-/**
  * Saved levels manager
  */
 class SavedLevelsManager {
@@ -616,6 +75,110 @@ function setupCollapsibleSections() {
   });
 }
 
+// Setup lock icons for parameters
+function setupLockIcons() {
+  const lockIcons = document.querySelectorAll(".param-lock");
+
+  // Preload SVG content
+  const lockSvgPromise = fetch("../assets/lock.svg").then((response) =>
+    response.text()
+  );
+  const unlockSvgPromise = fetch("../assets/lock-open.svg").then((response) =>
+    response.text()
+  );
+
+  // Wait for both SVGs to load
+  Promise.all([lockSvgPromise, unlockSvgPromise])
+    .then(([lockSvg, unlockSvg]) => {
+      lockIcons.forEach((icon) => {
+        // Get the parameter this lock controls
+        const param = icon.getAttribute("data-param");
+
+        // Set initial state based on game instance if available
+        if (window.game && window.game.generator) {
+          const isLocked = window.game.generator.lockedParams[param] || false;
+          if (isLocked) {
+            icon.innerHTML = lockSvg;
+            icon.classList.add("locked");
+          } else {
+            icon.innerHTML = unlockSvg;
+            icon.classList.remove("locked");
+          }
+        } else {
+          // Default to unlocked state
+          icon.innerHTML = unlockSvg;
+        }
+
+        // Add click handler
+        icon.addEventListener("click", () => {
+          const isLocked = icon.classList.contains("locked");
+
+          // Toggle lock state
+          if (isLocked) {
+            icon.innerHTML = unlockSvg;
+            icon.classList.remove("locked");
+            if (window.game && window.game.generator) {
+              window.game.generator.lockedParams[param] = false;
+            }
+          } else {
+            icon.innerHTML = lockSvg;
+            icon.classList.add("locked");
+            if (window.game && window.game.generator) {
+              window.game.generator.lockedParams[param] = true;
+            }
+          }
+        });
+      });
+    })
+    .catch((error) => {
+      console.error("Failed to load lock SVGs:", error);
+      // Fallback to emojis if SVG loading fails
+      setupLockIconsEmojiFallback();
+    });
+}
+
+// Fallback function using emojis instead of SVGs
+function setupLockIconsEmojiFallback() {
+  const lockIcons = document.querySelectorAll(".param-lock");
+
+  lockIcons.forEach((icon) => {
+    const param = icon.getAttribute("data-param");
+
+    // Set initial state
+    if (window.game && window.game.generator) {
+      const isLocked = window.game.generator.lockedParams[param] || false;
+      if (isLocked) {
+        icon.textContent = "🔒";
+        icon.classList.add("locked");
+      } else {
+        icon.textContent = "🔓";
+        icon.classList.remove("locked");
+      }
+    } else {
+      icon.textContent = "🔓";
+    }
+
+    // Add click handler
+    icon.addEventListener("click", () => {
+      const isLocked = icon.classList.contains("locked");
+
+      if (isLocked) {
+        icon.textContent = "🔓";
+        icon.classList.remove("locked");
+        if (window.game && window.game.generator) {
+          window.game.generator.lockedParams[param] = false;
+        }
+      } else {
+        icon.textContent = "🔒";
+        icon.classList.add("locked");
+        if (window.game && window.game.generator) {
+          window.game.generator.lockedParams[param] = true;
+        }
+      }
+    });
+  });
+}
+
 // Setup saved levels manager and dialogs
 document.addEventListener("DOMContentLoaded", () => {
   const savedLevelsManager = new SavedLevelsManager();
@@ -650,7 +213,7 @@ document.addEventListener("DOMContentLoaded", () => {
       loadButton.setAttribute("data-tooltip", "Play Level");
 
       // Create play SVG icon
-      fetch("play.svg")
+      fetch("../assets/play.svg")
         .then((response) => response.text())
         .then((svgContent) => {
           loadButton.innerHTML = svgContent;
@@ -670,7 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
       copyButton.setAttribute("data-tooltip", "Copy URL");
 
       // Create share SVG icon
-      fetch("share.svg")
+      fetch("../assets/share.svg")
         .then((response) => response.text())
         .then((svgContent) => {
           copyButton.innerHTML = svgContent;
@@ -701,7 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
       deleteButton.setAttribute("data-tooltip", "Delete Level");
 
       // Create delete SVG icon
-      fetch("delete.svg")
+      fetch("../assets/delete.svg")
         .then((response) => response.text())
         .then((svgContent) => {
           deleteButton.innerHTML = svgContent;
@@ -865,6 +428,9 @@ document.addEventListener("DOMContentLoaded", () => {
     chanceToCreateSwitch: document.getElementById("chanceToCreateSwitchValue"),
     chanceToDropBoulder: document.getElementById("chanceToDropBoulderValue"),
     chanceToCarveHole: document.getElementById("chanceToCarveHoleValue"),
+    chanceToSpawnSoloBoulder: document.getElementById(
+      "chanceToSpawnSoloBoulderValue"
+    ),
   };
 
   // Default parameter values
@@ -883,6 +449,8 @@ document.addEventListener("DOMContentLoaded", () => {
     minNbFloorTiles: 13,
     maxNbFloorTiles: 47,
     chanceToCarveHole: 60, // percentage for slider
+    minSoloBoulders: 2,
+    chanceToSpawnSoloBoulder: 30, // percentage for slider
   };
 
   // Update sliders' value display when they change
@@ -902,6 +470,12 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("chanceToCarveHole")
     .addEventListener("input", (e) => {
       sliderValueDisplays.chanceToCarveHole.textContent = `${e.target.value}%`;
+    });
+
+  document
+    .getElementById("chanceToSpawnSoloBoulder")
+    .addEventListener("input", (e) => {
+      sliderValueDisplays.chanceToSpawnSoloBoulder.textContent = `${e.target.value}%`;
     });
 
   // Fill form with current game parameters
@@ -945,6 +519,13 @@ document.addEventListener("DOMContentLoaded", () => {
     sliderValueDisplays.chanceToCarveHole.textContent = `${Math.round(
       gen.chanceToCarveHole * 100
     )}%`;
+    document.getElementById("minSoloBoulders").value = gen.minSoloBoulders;
+    document.getElementById("chanceToSpawnSoloBoulder").value = Math.round(
+      gen.chanceToSpawnSoloBoulder * 100
+    );
+    sliderValueDisplays.chanceToSpawnSoloBoulder.textContent = `${Math.round(
+      gen.chanceToSpawnSoloBoulder * 100
+    )}%`;
   }
 
   // Reset form to default values
@@ -974,6 +555,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("chanceToCarveHole").value =
       defaultParams.chanceToCarveHole;
     sliderValueDisplays.chanceToCarveHole.textContent = `${defaultParams.chanceToCarveHole}%`;
+    document.getElementById("minSoloBoulders").value =
+      defaultParams.minSoloBoulders;
+    document.getElementById("chanceToSpawnSoloBoulder").value =
+      defaultParams.chanceToSpawnSoloBoulder;
+    sliderValueDisplays.chanceToSpawnSoloBoulder.textContent = `${defaultParams.chanceToSpawnSoloBoulder}%`;
   }
 
   // Apply form values to the game
@@ -1010,6 +596,12 @@ document.addEventListener("DOMContentLoaded", () => {
       ),
       chanceToCarveHole:
         parseInt(document.getElementById("chanceToCarveHole").value) / 100,
+      minSoloBoulders: parseInt(
+        document.getElementById("minSoloBoulders").value
+      ),
+      chanceToSpawnSoloBoulder:
+        parseInt(document.getElementById("chanceToSpawnSoloBoulder").value) /
+        100,
     };
 
     // Generate a new random seed but keep the parameters
@@ -1017,11 +609,17 @@ document.addEventListener("DOMContentLoaded", () => {
       Math.random() * 1000000000000000
     ).toString();
 
+    // Keep the current locked parameters state
+    const lockedParams = gameInstance.generator.lockedParams;
+
     // Apply values to generator
     const gen = gameInstance.generator;
     Object.keys(params).forEach((key) => {
       gen[key] = params[key];
     });
+
+    // Re-apply the locked parameters
+    gen.lockedParams = lockedParams;
 
     // Set to not randomize parameters but still use the new seed
     gen.doRandom = false;
@@ -1054,11 +652,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Setup collapsible sections
   setupCollapsibleSections();
-});
 
-// Initialize the game when the page loads
-window.onload = () => {
-  const game = new Game("gameCanvas");
-  window.game = game; // Expose game instance globally for parameter dialog
-  game.init();
-};
+  // Setup lock icons
+  setupLockIcons();
+});

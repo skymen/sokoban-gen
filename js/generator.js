@@ -22,9 +22,21 @@ class LevelGenerator {
     this.minNbFloorTiles = config.minNbFloorTiles || 13;
     this.maxNbFloorTiles = config.maxNbFloorTiles || 47;
     this.chanceToCarveHole = config.chanceToCarveHole || 1;
+    this.minSoloBoulders = config.minSoloBoulders || 2;
+    this.chanceToSpawnSoloBoulder = config.chanceToSpawnSoloBoulder || 0.3;
+
+    // Track locked parameters that shouldn't be randomized
+    this.lockedParams = config.lockedParams || {
+      gridW: false,
+      gridH: false,
+      minPull: false,
+      chanceToDropBoulder: false,
+      chanceToCarveHole: false,
+    };
 
     // State variables
-    this.seed = config.seed || Math.floor(Math.random() * 1000000000000000).toString();
+    this.seed =
+      config.seed || Math.floor(Math.random() * 1000000000000000).toString();
     this.random = new Random(this.seed);
     this.isGenerating = false;
     this.doRandom = true;
@@ -45,7 +57,7 @@ class LevelGenerator {
   async generate() {
     this.isGenerating = true;
     let attempts = 0;
-    const maxAttempts = 3000;
+    const maxAttempts = 5000;
 
     if (this.doRandom) {
       this.randomizeParameters();
@@ -83,7 +95,7 @@ class LevelGenerator {
 
       // Every 100 attempts, slightly adjust parameters to increase chances of success
       if (attempts % 100 === 0) {
-        this.adjustParametersForDifficultGeneration();
+        //this.adjustParametersForDifficultGeneration();
       }
     }
 
@@ -113,27 +125,38 @@ class LevelGenerator {
     );
 
     // Adjust pathfinding to create more varied layouts
-    this.chanceToWalkOnFloor = Math.min(
-      this.chanceToWalkOnFloor + 0.1,
-      5.0
-    );
-    this.chanceToKeepForward = Math.min(
-      this.chanceToKeepForward + 0.1,
-      3.0
-    );
+    this.chanceToWalkOnFloor = Math.min(this.chanceToWalkOnFloor + 0.1, 5.0);
+    this.chanceToKeepForward = Math.min(this.chanceToKeepForward + 0.1, 3.0);
   }
 
   /**
    * Randomize the generation parameters
    */
   randomizeParameters() {
-    this.chanceToCarveHole = Math.floor(Math.random() * 0.6 * 100) / 100;
-    this.chanceToDropBoulder = Math.floor((Math.random() * 0.5 + 0.2) * 100) / 100;
-    this.minPull = Math.floor(Math.random() * 4) + 2;
-    this.gridH = Math.floor(Math.random() * 4) + 5;
-    this.gridW = Math.floor(Math.random() * 7) + 10;
+    // Only randomize unlocked parameters
+    if (!this.lockedParams.chanceToCarveHole) {
+      this.chanceToCarveHole = Math.floor(Math.random() * 0.6 * 100) / 100;
+    }
+
+    if (!this.lockedParams.chanceToDropBoulder) {
+      this.chanceToDropBoulder =
+        Math.floor((Math.random() * 0.5 + 0.2) * 100) / 100;
+    }
+
+    if (!this.lockedParams.minPull) {
+      this.minPull = Math.floor(Math.random() * 4) + 2;
+    }
+
+    if (!this.lockedParams.gridH) {
+      this.gridH = Math.floor(Math.random() * 4) + 5;
+    }
+
+    if (!this.lockedParams.gridW) {
+      this.gridW = Math.floor(Math.random() * 7) + 10;
+    }
+
+    // Always generate a new seed
     this.seed = Math.floor(Math.random() * 1000000000000000).toString();
-    // this.random = new Random(this.seed);
   }
 
   /**
@@ -287,13 +310,6 @@ class LevelGenerator {
           wallY < this.gridH &&
           this.grid[wallY][wallX].wall
         ) {
-          // Create a switch at the wall
-          const newSwitch = {
-            x: wallX,
-            y: wallY,
-          };
-          this.switches.push(newSwitch);
-
           // Turn the wall into a floor
           this.grid[wallY][wallX] = {
             x: wallX,
@@ -308,11 +324,28 @@ class LevelGenerator {
           const boulder = {
             x: this.player.prevX,
             y: this.player.prevY,
-            switchUID: this.switches.length - 1,
             nbPulls: 0,
           };
-          this.boulders.push(boulder);
 
+          // Decide whether to create a solo boulder or a switch-boulder pair
+          const createSoloBoulder =
+            this.random.next() < this.chanceToSpawnSoloBoulder;
+          if (!createSoloBoulder) {
+            // Create a switch at the wall
+            const newSwitch = {
+              x: wallX,
+              y: wallY,
+            };
+            this.switches.push(newSwitch);
+
+            // Link the boulder to the switch
+            boulder.switchUID = this.switches.length - 1;
+          } else {
+            // Make it a solo boulder (no linked switch)
+            boulder.switchUID = -1;
+          }
+
+          this.boulders.push(boulder);
           this.isPullingBoulder = true;
           this.nbBoulderPulls = 0;
         }
@@ -342,8 +375,7 @@ class LevelGenerator {
         const ny = this.player.y + y;
 
         // Skip out of bounds
-        if (nx < 0 || nx >= this.gridW || ny < 0 || ny >= this.gridH)
-          continue;
+        if (nx < 0 || nx >= this.gridW || ny < 0 || ny >= this.gridH) continue;
 
         const tile = this.grid[ny][nx];
 
@@ -432,17 +464,20 @@ class LevelGenerator {
     for (let i = this.boulders.length - 1; i >= 0; i--) {
       const boulder = this.boulders[i];
       let malformed = false;
+      let convertToSoloBoulder = false;
 
       // Switch and boulder at same position
       if (
+        boulder.switchUID >= 0 &&
         this.switches.some((s) => s.x === boulder.x && s.y === boulder.y)
       ) {
         malformed = true;
       }
 
       // Boulder hasn't been pulled enough
-      if (boulder.nbPulls < this.minPull) {
-        malformed = true;
+      if (boulder.switchUID >= 0 && boulder.nbPulls < this.minPull) {
+        // Instead of removing it, convert to solo boulder
+        convertToSoloBoulder = true;
       }
 
       if (malformed) {
@@ -452,6 +487,22 @@ class LevelGenerator {
           this.switches.splice(switchIndex, 1);
         }
         this.boulders.splice(i, 1);
+
+        // Reindex the remaining boulders' switchUIDs
+        for (let j = 0; j < this.boulders.length; j++) {
+          if (this.boulders[j].switchUID > switchIndex) {
+            this.boulders[j].switchUID--;
+          }
+        }
+      } else if (convertToSoloBoulder) {
+        // Remove the switch but keep the boulder
+        const switchIndex = boulder.switchUID;
+        if (switchIndex >= 0 && switchIndex < this.switches.length) {
+          this.switches.splice(switchIndex, 1);
+        }
+
+        // Mark this boulder as a solo boulder
+        boulder.switchUID = -1;
 
         // Reindex the remaining boulders' switchUIDs
         for (let j = 0; j < this.boulders.length; j++) {
@@ -483,11 +534,9 @@ class LevelGenerator {
 
           // Check adjacent tiles
           if (y > 0 && !this.grid[y - 1][x].wall) top = true;
-          if (y < this.gridH - 1 && !this.grid[y + 1][x].wall)
-            bottom = true;
+          if (y < this.gridH - 1 && !this.grid[y + 1][x].wall) bottom = true;
           if (x > 0 && !this.grid[y][x - 1].wall) left = true;
-          if (x < this.gridW - 1 && !this.grid[y][x + 1].wall)
-            right = true;
+          if (x < this.gridW - 1 && !this.grid[y][x + 1].wall) right = true;
 
           // Can be a hole if there's a path around it
           const canBeHole = (top && bottom) || (left && right);
@@ -529,11 +578,15 @@ class LevelGenerator {
       this.boulders.some(
         (b) => b.x === this.player.x && b.y === this.player.y
       ) ||
-      this.switches.some(
-        (s) => s.x === this.player.x && s.y === this.player.y
-      )
+      this.switches.some((s) => s.x === this.player.x && s.y === this.player.y)
     ) {
       return false;
+    }
+
+    // Count solo boulders (boulders with switchUID of -1)
+    const soloBoulders = this.boulders.filter((b) => b.switchUID === -1).length;
+    if (soloBoulders < this.minSoloBoulders) {
+      //return false;
     }
 
     return true;
@@ -602,9 +655,7 @@ class LevelGenerator {
 
       // Can't push into another boulder
       if (
-        this.boulders.some(
-          (b) => b.x === pushTargetX && b.y === pushTargetY
-        )
+        this.boulders.some((b) => b.x === pushTargetX && b.y === pushTargetY)
       ) {
         return false;
       }
@@ -638,109 +689,5 @@ class LevelGenerator {
     }
 
     return true;
-  }
-}
-
-/**
- * Game renderer
- */
-class GameRenderer {
-  constructor(canvas, tileSize = 32) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext("2d");
-    this.tileSize = tileSize;
-    this.level = null;
-  }
-
-  setLevel(level) {
-    this.level = level;
-
-    // Resize canvas to fit level
-    this.canvas.width = level.gridW * this.tileSize;
-    this.canvas.height = level.gridH * this.tileSize;
-
-    this.render();
-  }
-
-  render() {
-    if (!this.level) return;
-
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Draw tiles
-    for (let y = 0; y < this.level.gridH; y++) {
-      for (let x = 0; x < this.level.gridW; x++) {
-        const tile = this.level.grid[y][x];
-        const tx = x * this.tileSize;
-        const ty = y * this.tileSize;
-
-        if (tile.wall) {
-          this.ctx.fillStyle = "#666";
-          this.ctx.fillRect(tx, ty, this.tileSize, this.tileSize);
-        } else if (tile.hole) {
-          this.ctx.fillStyle = "#000";
-          this.ctx.fillRect(tx, ty, this.tileSize, this.tileSize);
-        } else {
-          this.ctx.fillStyle = "#aaa";
-          this.ctx.fillRect(tx, ty, this.tileSize, this.tileSize);
-        }
-
-        // Draw grid lines
-        this.ctx.strokeStyle = "#444";
-        this.ctx.strokeRect(tx, ty, this.tileSize, this.tileSize);
-      }
-    }
-
-    // Draw exit
-    this.ctx.fillStyle = "#0f0";
-    this.ctx.beginPath();
-    this.ctx.arc(
-      this.level.exit.x * this.tileSize + this.tileSize / 2,
-      this.level.exit.y * this.tileSize + this.tileSize / 2,
-      this.tileSize / 4,
-      0,
-      Math.PI * 2
-    );
-    this.ctx.fill();
-
-    // Draw switches
-    for (const s of this.level.switches) {
-      this.ctx.fillStyle = "#f00";
-      this.ctx.beginPath();
-      this.ctx.arc(
-        s.x * this.tileSize + this.tileSize / 2,
-        s.y * this.tileSize + this.tileSize / 2,
-        this.tileSize / 3,
-        0,
-        Math.PI * 2
-      );
-      this.ctx.fill();
-    }
-
-    // Draw boulders
-    for (const b of this.level.boulders) {
-      this.ctx.fillStyle = "#a50";
-      this.ctx.beginPath();
-      this.ctx.arc(
-        b.x * this.tileSize + this.tileSize / 2,
-        b.y * this.tileSize + this.tileSize / 2,
-        this.tileSize / 2 - 2,
-        0,
-        Math.PI * 2
-      );
-      this.ctx.fill();
-    }
-
-    // Draw player
-    this.ctx.fillStyle = "#00f";
-    this.ctx.beginPath();
-    this.ctx.arc(
-      this.level.player.x * this.tileSize + this.tileSize / 2,
-      this.level.player.y * this.tileSize + this.tileSize / 2,
-      this.tileSize / 3,
-      0,
-      Math.PI * 2
-    );
-    this.ctx.fill();
   }
 }
