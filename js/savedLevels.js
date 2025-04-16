@@ -650,6 +650,12 @@ document.addEventListener("DOMContentLoaded", () => {
     chanceToSpawnSoloBoulder: document.getElementById(
       "chanceToSpawnSoloBoulderValue"
     ),
+    chanceToCreateWallBoulder: document.getElementById(
+      "chanceToCreateWallBoulderValue"
+    ),
+    chanceWallToWallBoulder: document.getElementById(
+      "chanceWallToWallBoulderValue"
+    ),
   };
 
   // Default parameter values
@@ -670,6 +676,8 @@ document.addEventListener("DOMContentLoaded", () => {
     chanceToCarveHole: 60, // percentage for slider
     minSoloBoulders: 2,
     chanceToSpawnSoloBoulder: 30, // percentage for slider
+    chanceToCreateWallBoulder: 40, // percentage for slider
+    chanceWallToWallBoulder: 20, // percentage for slider
   };
 
   // Update sliders' value display when they change
@@ -695,6 +703,18 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("chanceToSpawnSoloBoulder")
     .addEventListener("input", (e) => {
       sliderValueDisplays.chanceToSpawnSoloBoulder.textContent = `${e.target.value}%`;
+    });
+
+  document
+    .getElementById("chanceToCreateWallBoulder")
+    .addEventListener("input", (e) => {
+      sliderValueDisplays.chanceToCreateWallBoulder.textContent = `${e.target.value}%`;
+    });
+
+  document
+    .getElementById("chanceWallToWallBoulder")
+    .addEventListener("input", (e) => {
+      sliderValueDisplays.chanceWallToWallBoulder.textContent = `${e.target.value}%`;
     });
 
   // Fill form with current game parameters
@@ -745,6 +765,18 @@ document.addEventListener("DOMContentLoaded", () => {
     sliderValueDisplays.chanceToSpawnSoloBoulder.textContent = `${Math.round(
       gen.chanceToSpawnSoloBoulder * 100
     )}%`;
+    document.getElementById("chanceToCreateWallBoulder").value = Math.round(
+      gen.chanceToCreateWallBoulder * 100
+    );
+    sliderValueDisplays.chanceToCreateWallBoulder.textContent = `${Math.round(
+      gen.chanceToCreateWallBoulder * 100
+    )}%`;
+    document.getElementById("chanceWallToWallBoulder").value = Math.round(
+      gen.chanceWallToWallBoulder * 100
+    );
+    sliderValueDisplays.chanceWallToWallBoulder.textContent = `${Math.round(
+      gen.chanceWallToWallBoulder * 100
+    )}%`;
   }
 
   // Reset form to default values
@@ -779,6 +811,12 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("chanceToSpawnSoloBoulder").value =
       defaultParams.chanceToSpawnSoloBoulder;
     sliderValueDisplays.chanceToSpawnSoloBoulder.textContent = `${defaultParams.chanceToSpawnSoloBoulder}%`;
+    document.getElementById("chanceToCreateWallBoulder").value =
+      defaultParams.chanceToCreateWallBoulder;
+    sliderValueDisplays.chanceToCreateWallBoulder.textContent = `${defaultParams.chanceToCreateWallBoulder}%`;
+    document.getElementById("chanceWallToWallBoulder").value =
+      defaultParams.chanceWallToWallBoulder;
+    sliderValueDisplays.chanceWallToWallBoulder.textContent = `${defaultParams.chanceWallToWallBoulder}%`;
   }
 
   // Apply form values to the game
@@ -820,6 +858,12 @@ document.addEventListener("DOMContentLoaded", () => {
       ),
       chanceToSpawnSoloBoulder:
         parseInt(document.getElementById("chanceToSpawnSoloBoulder").value) /
+        100,
+      chanceToCreateWallBoulder:
+        parseInt(document.getElementById("chanceToCreateWallBoulder").value) /
+        100,
+      chanceWallToWallBoulder:
+        parseInt(document.getElementById("chanceWallToWallBoulder").value) /
         100,
     };
 

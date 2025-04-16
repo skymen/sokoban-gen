@@ -21,9 +21,13 @@ class LevelGenerator {
     this.chanceToDropBoulder = config.chanceToDropBoulder || 0.5;
     this.minNbFloorTiles = config.minNbFloorTiles || 13;
     this.maxNbFloorTiles = config.maxNbFloorTiles || 33;
-    this.chanceToCarveHole = config.chanceToCarveHole || 1;
+    this.chanceToCarveHole = config.chanceToCarveHole || 0.6;
     this.minSoloBoulders = config.minSoloBoulders || 4;
     this.chanceToSpawnSoloBoulder = config.chanceToSpawnSoloBoulder || 0.3;
+
+    // Wall boulder parameters
+    this.chanceToCreateWallBoulder = config.chanceToCreateWallBoulder || 0.4;
+    this.chanceWallToWallBoulder = config.chanceWallToWallBoulder || 0.2;
 
     // Track locked parameters that shouldn't be randomized
     this.lockedParams = config.lockedParams || {
@@ -32,6 +36,8 @@ class LevelGenerator {
       minPull: false,
       chanceToDropBoulder: false,
       chanceToCarveHole: false,
+      chanceToCreateWallBoulder: false,
+      chanceWallToWallBoulder: false,
     };
 
     // State variables
@@ -76,6 +82,7 @@ class LevelGenerator {
       this.createExit();
       await this.generatePathways();
       this.clearMalformedSwitches();
+      this.generateWallBoulders();
       this.generateHoles();
 
       // Verify the level is valid
@@ -325,55 +332,82 @@ class LevelGenerator {
           wallY < this.gridH &&
           this.grid[wallY][wallX].wall
         ) {
-          // Turn the wall into a floor
-          this.grid[wallY][wallX] = {
-            x: wallX,
-            y: wallY,
-            wall: false,
-            hole: false,
-            lockedByGen: true,
-            type: "floor",
-          };
+          // Decide whether to turn this wall into a switch+boulder or into a wall boulder
+          const createWallBoulder =
+            this.random.next() < this.chanceWallToWallBoulder;
 
-          // Create a boulder at the player's previous position
-          const boulder = {
-            x: this.player.prevX,
-            y: this.player.prevY,
-            nbPulls: 0,
-          };
-
-          // Decide whether to create a solo boulder or a switch-boulder pair
-          const createSoloBoulder =
-            this.random.next() < this.chanceToSpawnSoloBoulder;
-          if (!createSoloBoulder) {
-            // Create a switch at the wall
-            const newSwitch = {
+          if (createWallBoulder) {
+            // Turn the wall into a floor with boulder
+            this.grid[wallY][wallX] = {
               x: wallX,
               y: wallY,
+              wall: false,
+              hole: false,
+              lockedByGen: true,
+              type: "floor",
             };
-            this.switches.push(newSwitch);
 
-            // Link the boulder to the switch
-            boulder.switchUID = this.switches.length - 1;
+            // Create a wall boulder at the wall position
+            const wallBoulder = {
+              x: wallX,
+              y: wallY,
+              nbPulls: 0,
+              switchUID: -1, // Not linked to a switch
+              isWallBoulder: true,
+            };
+
+            this.boulders.push(wallBoulder);
           } else {
-            // Make it a solo boulder (no linked switch)
-            boulder.switchUID = -1;
+            // Original behavior: Turn wall into floor
+            this.grid[wallY][wallX] = {
+              x: wallX,
+              y: wallY,
+              wall: false,
+              hole: false,
+              lockedByGen: true,
+              type: "floor",
+            };
 
-            if (this.random.next() < this.chanceToCarveHole) {
-              this.grid[wallY][wallX] = {
+            // Create a boulder at the player's previous position
+            const boulder = {
+              x: this.player.prevX,
+              y: this.player.prevY,
+              nbPulls: 0,
+            };
+
+            // Decide whether to create a solo boulder or a switch-boulder pair
+            const createSoloBoulder =
+              this.random.next() < this.chanceToSpawnSoloBoulder;
+            if (!createSoloBoulder) {
+              // Create a switch at the wall
+              const newSwitch = {
                 x: wallX,
                 y: wallY,
-                wall: false,
-                hole: true,
-                lockedByGen: false,
-                type: "hole",
               };
-            }
-          }
+              this.switches.push(newSwitch);
 
-          this.boulders.push(boulder);
-          this.isPullingBoulder = true;
-          this.nbBoulderPulls = 0;
+              // Link the boulder to the switch
+              boulder.switchUID = this.switches.length - 1;
+            } else {
+              // Make it a solo boulder (no linked switch)
+              boulder.switchUID = -1;
+
+              if (this.random.next() < this.chanceToCarveHole) {
+                this.grid[wallY][wallX] = {
+                  x: wallX,
+                  y: wallY,
+                  wall: false,
+                  hole: true,
+                  lockedByGen: false,
+                  type: "hole",
+                };
+              }
+            }
+
+            this.boulders.push(boulder);
+            this.isPullingBoulder = true;
+            this.nbBoulderPulls = 0;
+          }
         }
       }
     }
@@ -578,6 +612,98 @@ class LevelGenerator {
               lockedByGen: false,
               type: "hole",
             };
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate wall boulders - convert certain walls to floors with boulders
+   */
+  generateWallBoulders() {
+    for (let i = 0; i < 10; i++) {
+      // Similar to hole generation, do this in multiple passes
+      for (let y = 0; y < this.gridH; y++) {
+        for (let x = 0; x < this.gridW; x++) {
+          const tile = this.grid[y][x];
+
+          // Skip non-wall tiles or tiles locked by generation
+          if (!tile.wall || tile.lockedByGen) continue;
+
+          // Count adjacent empty sides (no switches)
+          let emptyAdjacentCount = 0;
+          let adjacentDirections = [];
+
+          // Check each adjacent tile
+          if (
+            y > 0 &&
+            !this.grid[y - 1][x].wall &&
+            !this.switches.some((s) => s.x === x && s.y === y - 1)
+          ) {
+            emptyAdjacentCount++;
+            adjacentDirections.push({ dx: 0, dy: -1 });
+          }
+          if (
+            y < this.gridH - 1 &&
+            !this.grid[y + 1][x].wall &&
+            !this.switches.some((s) => s.x === x && s.y === y + 1)
+          ) {
+            emptyAdjacentCount++;
+            adjacentDirections.push({ dx: 0, dy: 1 });
+          }
+          if (
+            x > 0 &&
+            !this.grid[y][x - 1].wall &&
+            !this.switches.some((s) => s.x === x - 1 && s.y === y)
+          ) {
+            emptyAdjacentCount++;
+            adjacentDirections.push({ dx: -1, dy: 0 });
+          }
+          if (
+            x < this.gridW - 1 &&
+            !this.grid[y][x + 1].wall &&
+            !this.switches.some((s) => s.x === x + 1 && s.y === y)
+          ) {
+            emptyAdjacentCount++;
+            adjacentDirections.push({ dx: 1, dy: 0 });
+          }
+
+          // Check if there's already a boulder at this position
+          const hasBoulder = this.boulders.some((b) => b.x === x && b.y === y);
+
+          // Only consider walls with at least 2 empty adjacent tiles and no boulder already there
+          if (emptyAdjacentCount < 2 || hasBoulder) continue;
+          // if the adjacent tiles are not opposite of each other, skip
+          if (emptyAdjacentCount === 2) {
+            const dx1 = adjacentDirections[0].dx;
+            const dy1 = adjacentDirections[0].dy;
+            const dx2 = adjacentDirections[1].dx;
+            const dy2 = adjacentDirections[1].dy;
+            if (dx1 * dx2 + dy1 * dy2 === 0) continue; // opposite directions
+          }
+
+          if (this.random.next() < this.chanceToCreateWallBoulder) {
+            // Convert to floor
+            this.grid[y][x] = {
+              x,
+              y,
+              wall: false,
+              hole: false,
+              lockedByGen: true,
+              type: "floor",
+            };
+
+            // Add a wall boulder
+            const boulder = {
+              x,
+              y,
+              nbPulls: 0,
+              switchUID: -1, // Solo boulder, not part of switch/boulder pair
+              isWallBoulder: true, // Mark as a wall boulder
+            };
+
+            this.boulders.push(boulder);
           }
         }
       }

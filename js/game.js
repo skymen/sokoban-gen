@@ -62,6 +62,22 @@ class Game {
         this.generator.chanceToDropBoulder = parseFloat(
           params.get("chanceToDropBoulder")
         );
+      if (params.has("minSoloBoulders"))
+        this.generator.minSoloBoulders = parseInt(
+          params.get("minSoloBoulders")
+        );
+      if (params.has("chanceToSpawnSoloBoulder"))
+        this.generator.chanceToSpawnSoloBoulder = parseFloat(
+          params.get("chanceToSpawnSoloBoulder")
+        );
+      if (params.has("chanceToCreateWallBoulder"))
+        this.generator.chanceToCreateWallBoulder = parseFloat(
+          params.get("chanceToCreateWallBoulder")
+        );
+      if (params.has("chanceWallToWallBoulder"))
+        this.generator.chanceWallToWallBoulder = parseFloat(
+          params.get("chanceWallToWallBoulder")
+        );
 
       // Load floor and hole parameters
       if (params.has("minNbFloorTiles"))
@@ -105,6 +121,19 @@ class Game {
     params.set("chanceToCreateSwitch", this.generator.chanceToCreateSwitch);
     params.set("minPull", this.generator.minPull);
     params.set("chanceToDropBoulder", this.generator.chanceToDropBoulder);
+    params.set("minSoloBoulders", this.generator.minSoloBoulders);
+    params.set(
+      "chanceToSpawnSoloBoulder",
+      this.generator.chanceToSpawnSoloBoulder
+    );
+    params.set(
+      "chanceToCreateWallBoulder",
+      this.generator.chanceToCreateWallBoulder
+    );
+    params.set(
+      "chanceWallToWallBoulder",
+      this.generator.chanceWallToWallBoulder
+    );
 
     // Add floor and hole parameters
     params.set("minNbFloorTiles", this.generator.minNbFloorTiles);
@@ -288,6 +317,11 @@ class Game {
       this.generator.minSoloBoulders;
     document.getElementById("soloBouldersChanceStat").textContent =
       (this.generator.chanceToSpawnSoloBoulder * 100).toFixed(0) + "%";
+
+    document.getElementById("wallBoulderChanceStat").textContent =
+      (this.generator.chanceToCreateWallBoulder * 100).toFixed(0) + "%";
+    document.getElementById("wallToWallBoulderStat").textContent =
+      (this.generator.chanceWallToWallBoulder * 100).toFixed(0) + "%";
 
     // Floor & Holes parameters
     document.getElementById("minFloorStat").textContent =

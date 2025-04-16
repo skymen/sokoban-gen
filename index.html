@@ -93,6 +93,14 @@
             <span>Solo Boulder %:</span>
             <span id="soloBouldersChanceStat">-</span>
           </div>
+          <div class="stat-item">
+            <span>Wall Boulder %:</span>
+            <span id="wallBoulderChanceStat">-</span>
+          </div>
+          <div class="stat-item">
+            <span>Switch to WB %:</span>
+            <span id="wallToWallBoulderStat">-</span>
+          </div>
         </div>
 
         <div class="stat-group">
@@ -357,6 +365,42 @@
                     value="30"
                   />
                   <span id="chanceToSpawnSoloBoulderValue">30%</span>
+                </div>
+
+                <!-- Wall Boulder Parameters -->
+                <div class="param-row">
+                  <label for="chanceToCreateWallBoulder"
+                    >Wall Boulder Chance (%):</label
+                  >
+                  <input
+                    type="range"
+                    id="chanceToCreateWallBoulder"
+                    min="0"
+                    max="100"
+                    value="40"
+                  />
+                  <span id="chanceToCreateWallBoulderValue">40%</span>
+                  <span
+                    class="param-lock"
+                    data-param="chanceToCreateWallBoulder"
+                    >🔓</span
+                  >
+                </div>
+                <div class="param-row">
+                  <label for="chanceWallToWallBoulder"
+                    >Switch to Wall Boulder (%):</label
+                  >
+                  <input
+                    type="range"
+                    id="chanceWallToWallBoulder"
+                    min="0"
+                    max="100"
+                    value="20"
+                  />
+                  <span id="chanceWallToWallBoulderValue">20%</span>
+                  <span class="param-lock" data-param="chanceWallToWallBoulder"
+                    >🔓</span
+                  >
                 </div>
               </div>
             </div>
