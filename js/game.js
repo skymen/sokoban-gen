@@ -284,6 +284,10 @@ class Game {
     document.getElementById("minPullStat").textContent = this.generator.minPull;
     document.getElementById("dropBoulderStat").textContent =
       (this.generator.chanceToDropBoulder * 100).toFixed(0) + "%";
+    document.getElementById("minSoloBouldersStat").textContent =
+      this.generator.minSoloBoulders;
+    document.getElementById("soloBouldersChanceStat").textContent =
+      (this.generator.chanceToSpawnSoloBoulder * 100).toFixed(0) + "%";
 
     // Floor & Holes parameters
     document.getElementById("minFloorStat").textContent =
