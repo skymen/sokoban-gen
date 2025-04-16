@@ -61,6 +61,58 @@ class SavedLevelsManager {
   }
 }
 
+/**
+ * Level history manager
+ */
+class LevelHistoryManager {
+  constructor() {
+    this.storageKey = "sokobanLevelHistory";
+    this.maxHistorySize = 30;
+    this.levelHistory = this.loadFromLocalStorage();
+  }
+
+  addLevel(url, timestamp = new Date().toISOString()) {
+    // Create a simple timestamp in the format of MM/DD/YYYY HH:MM
+    const date = new Date(timestamp);
+    const formattedDate = date.toLocaleString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    // Add the new level at the beginning of the array
+    this.levelHistory.unshift({
+      url,
+      timestamp: formattedDate,
+      rawTimestamp: timestamp,
+    });
+
+    // Limit the history size to maxHistorySize
+    if (this.levelHistory.length > this.maxHistorySize) {
+      this.levelHistory = this.levelHistory.slice(0, this.maxHistorySize);
+    }
+
+    this.saveToLocalStorage();
+  }
+
+  clearHistory() {
+    this.levelHistory = [];
+    this.saveToLocalStorage();
+  }
+
+  loadFromLocalStorage() {
+    const data = localStorage.getItem(this.storageKey);
+    return data ? JSON.parse(data) : [];
+  }
+
+  saveToLocalStorage() {
+    localStorage.setItem(this.storageKey, JSON.stringify(this.levelHistory));
+  }
+}
+
 // Setup collapsible sections in the parameters dialog
 function setupCollapsibleSections() {
   const sections = document.querySelectorAll(".params-section.collapsible");
@@ -185,6 +237,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const savedLevelsDialog = document.getElementById("savedLevelsDialog");
   const savedLevelsList = document.getElementById("savedLevelsList");
 
+  // Initialize the level history manager
+  const levelHistoryManager = new LevelHistoryManager();
+  const levelHistoryDialog = document.getElementById("levelHistoryDialog");
+  const levelHistoryList = document.getElementById("levelHistoryList");
+
   function updateSavedLevelsList() {
     savedLevelsList.innerHTML = "";
 
@@ -293,6 +350,168 @@ document.addEventListener("DOMContentLoaded", () => {
 
       savedLevelsList.appendChild(li);
     });
+  }
+
+  function updateLevelHistoryList() {
+    levelHistoryList.innerHTML = "";
+
+    if (levelHistoryManager.levelHistory.length === 0) {
+      const emptyMessage = document.createElement("div");
+      emptyMessage.className = "empty-list-message";
+      emptyMessage.innerHTML = "🕒 No level history yet";
+      levelHistoryList.appendChild(emptyMessage);
+      return;
+    }
+
+    levelHistoryManager.levelHistory.forEach((level, index) => {
+      const li = document.createElement("li");
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "level-name";
+      nameSpan.textContent = `${level.timestamp}`;
+      li.appendChild(nameSpan);
+
+      const btnActions = document.createElement("div");
+      btnActions.className = "btn-actions";
+
+      // Load button with SVG icon and tooltip
+      const loadButton = document.createElement("button");
+      loadButton.className = "dialog-btn load-btn";
+      loadButton.setAttribute("data-tooltip", "Play Level");
+
+      // Create play SVG icon
+      fetch("../assets/play.svg")
+        .then((response) => response.text())
+        .then((svgContent) => {
+          loadButton.innerHTML = svgContent;
+        })
+        .catch(() => {
+          // Fallback to emoji if SVG fails to load
+          loadButton.innerHTML = '<span class="icon">▶️</span>';
+        });
+
+      loadButton.addEventListener("click", () => {
+        window.location.href = level.url;
+      });
+
+      // Copy button with SVG icon and tooltip
+      const copyButton = document.createElement("button");
+      copyButton.className = "dialog-btn copy-btn";
+      copyButton.setAttribute("data-tooltip", "Copy URL");
+
+      // Create share SVG icon
+      fetch("../assets/share.svg")
+        .then((response) => response.text())
+        .then((svgContent) => {
+          copyButton.innerHTML = svgContent;
+        })
+        .catch(() => {
+          // Fallback to emoji if SVG fails to load
+          copyButton.innerHTML = '<span class="icon">📋</span>';
+        });
+
+      copyButton.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(level.url);
+          // Use the copy notification instead of alert
+          const notification = document.getElementById("copyNotification");
+          notification.classList.add("show");
+          setTimeout(() => {
+            notification.classList.remove("show");
+          }, 2000);
+        } catch (err) {
+          console.error("Failed to copy URL: ", err);
+          dialogManager.alert("Error", "Failed to copy URL.");
+        }
+      });
+
+      // Save button with SVG icon and tooltip for history items
+      const saveButton = document.createElement("button");
+      saveButton.className = "dialog-btn save-btn";
+      saveButton.setAttribute("data-tooltip", "Save Level");
+
+      // Use a simple save icon emoji
+      saveButton.innerHTML = '<span class="icon">💾</span>';
+
+      saveButton.addEventListener("click", async () => {
+        const name = await dialogManager.prompt(
+          "Save Level",
+          "Enter a name for this level:"
+        );
+        if (name) {
+          savedLevelsManager.saveLevel(name, level.url);
+
+          // Show success notification
+          const notification = document.getElementById("copyNotification");
+          notification.textContent = "Level Saved!";
+          notification.classList.add("show");
+          setTimeout(() => {
+            notification.classList.remove("show");
+            // Reset text back to original after animation completes
+            setTimeout(() => {
+              notification.textContent = "Level URL Copied!";
+            }, 300);
+          }, 2000);
+        }
+      });
+
+      btnActions.appendChild(loadButton);
+      btnActions.appendChild(copyButton);
+      btnActions.appendChild(saveButton);
+      li.appendChild(btnActions);
+
+      levelHistoryList.appendChild(li);
+    });
+  }
+
+  // Search functionality for history
+  document
+    .getElementById("historySearchInput")
+    .addEventListener("input", (e) => {
+      const searchTerm = e.target.value.toLowerCase().trim();
+      filterLevelHistory(searchTerm);
+    });
+
+  function filterLevelHistory(searchTerm) {
+    const items = levelHistoryList.querySelectorAll("li");
+
+    if (items.length === 0) return;
+
+    if (!searchTerm) {
+      // If search is empty, show all items
+      items.forEach((item) => (item.style.display = "flex"));
+      return;
+    }
+
+    let hasVisibleItems = false;
+
+    items.forEach((item) => {
+      const levelName = item
+        .querySelector(".level-name")
+        .textContent.toLowerCase();
+      if (levelName.includes(searchTerm)) {
+        item.style.display = "flex";
+        hasVisibleItems = true;
+      } else {
+        item.style.display = "none";
+      }
+    });
+
+    // If no items match search, show message
+    if (!hasVisibleItems) {
+      if (!document.querySelector(".history-search-no-results")) {
+        const noResultsMsg = document.createElement("div");
+        noResultsMsg.className = "empty-list-message history-search-no-results";
+        noResultsMsg.innerHTML = "🔍 No levels match your search";
+        levelHistoryList.appendChild(noResultsMsg);
+      }
+    } else {
+      // Remove no results message if it exists
+      const noResultsMsg = document.querySelector(".history-search-no-results");
+      if (noResultsMsg) {
+        noResultsMsg.remove();
+      }
+    }
   }
 
   document
@@ -648,6 +867,60 @@ document.addEventListener("DOMContentLoaded", () => {
   applyParamsBtn.addEventListener("click", () => {
     applyParamsToGame();
     generationParamsDialog.classList.remove("show");
+  });
+
+  resetToDefaultsBtn.addEventListener("click", () => {
+    resetParamsToDefaults();
+  });
+
+  // History dialog event listeners
+  document.getElementById("showHistoryBtn").addEventListener("click", () => {
+    levelHistoryDialog.classList.add("show");
+    updateLevelHistoryList();
+  });
+
+  document
+    .getElementById("closeHistoryDialogBtn")
+    .addEventListener("click", () => {
+      levelHistoryDialog.classList.remove("show");
+    });
+
+  // Clear history button
+  document
+    .getElementById("clearHistoryBtn")
+    .addEventListener("click", async () => {
+      const confirmed = await dialogManager.confirm(
+        "Clear History",
+        "Are you sure you want to clear your level history?",
+        "Clear"
+      );
+      if (confirmed) {
+        levelHistoryManager.clearHistory();
+        updateLevelHistoryList();
+      }
+    });
+
+  // Close history dialog when clicking outside of the content
+  levelHistoryDialog.addEventListener("click", (e) => {
+    if (e.target === levelHistoryDialog) {
+      levelHistoryDialog.classList.remove("show");
+    }
+  });
+
+  // Hook into game generation to track history
+  // Monitor newGameBtn and sameParamsBtn clicks to add levels to history
+  document.getElementById("newGameBtn").addEventListener("click", () => {
+    // Small delay to allow the URL to update before capturing it
+    setTimeout(() => {
+      levelHistoryManager.addLevel(window.location.href);
+    }, 100);
+  });
+
+  document.getElementById("sameParamsBtn").addEventListener("click", () => {
+    // Small delay to allow the URL to update before capturing it
+    setTimeout(() => {
+      levelHistoryManager.addLevel(window.location.href);
+    }, 100);
   });
 
   // Setup collapsible sections

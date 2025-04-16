@@ -189,6 +189,25 @@ button:hover {
   transform: scale(0.95);
 }
 
+.extra-button {
+  background-color: #787878;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.extra-button:hover {
+  background-color: #525252;
+}
+
+.extra-button:active {
+  transform: scale(0.95);
+}
+
 .copy-notification {
   position: fixed;
   top: 20px;
@@ -308,6 +327,129 @@ dialog#generationParamsDialog {
   display: none;
 }
 
+/* Styles for saved levels list and level history list */
+#savedLevelsList,
+#levelHistoryList {
+  list-style-type: none;
+  padding: 0;
+  margin: 15px 0;
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  width: 100%;
+  /* Added to ensure tooltips can appear outside the container */
+  position: relative;
+}
+
+#savedLevelsList li,
+#levelHistoryList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 15px;
+  margin-bottom: 8px;
+  background-color: #333;
+  border-radius: 5px;
+  transition: background-color 0.2s;
+}
+
+#savedLevelsList li:hover,
+#levelHistoryList li:hover {
+  background-color: #3a3a3a;
+}
+
+#savedLevelsList li .level-name,
+#levelHistoryList li .level-name {
+  flex: 1;
+  font-weight: bold;
+  margin-right: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+#savedLevelsList li .btn-actions,
+#levelHistoryList li .btn-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#savedLevelsList .btn-actions .dialog-btn,
+#levelHistoryList .btn-actions .dialog-btn {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#savedLevelsList .btn-actions .dialog-btn svg,
+#levelHistoryList .btn-actions .dialog-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+#savedLevelsList .btn-actions .dialog-btn.load-btn svg,
+#levelHistoryList .btn-actions .dialog-btn.load-btn svg {
+  margin-left: 2px; /* Center the play icon visually */
+}
+
+/* Tooltip styling */
+#savedLevelsList .btn-actions .dialog-btn::before,
+#levelHistoryList .btn-actions .dialog-btn::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  transform: translateY(-50%);
+  margin-right: 8px;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+#savedLevelsList .btn-actions .dialog-btn::after,
+#levelHistoryList .btn-actions .dialog-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  transform: translateY(-50%);
+  margin-right: 3px;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 5px solid rgba(0, 0, 0, 0.85);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+#savedLevelsList .btn-actions .dialog-btn:hover::before,
+#savedLevelsList .btn-actions .dialog-btn:hover::after,
+#levelHistoryList .btn-actions .dialog-btn:hover::before,
+#levelHistoryList .btn-actions .dialog-btn:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
 #savedLevelsList {
   list-style-type: none;
   padding: 0;
@@ -333,150 +475,6 @@ dialog#generationParamsDialog {
 
 #savedLevelsList li:hover {
   background-color: #3a3a3a;
-}
-
-#savedLevelsList li .level-name {
-  flex: 1;
-  font-weight: bold;
-  margin-right: 15px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-#savedLevelsList li .btn-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-#savedLevelsList .btn-actions .dialog-btn {
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  padding: 0;
-  border-radius: 50%;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-#savedLevelsList .btn-actions .dialog-btn svg {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
-}
-
-#savedLevelsList .btn-actions .dialog-btn.load-btn svg {
-  margin-left: 2px; /* Center the play icon visually */
-}
-
-/* Tooltip styling */
-#savedLevelsList .btn-actions .dialog-btn::before {
-  content: attr(data-tooltip);
-  position: absolute;
-  top: 50%;
-  right: 100%;
-  transform: translateY(-50%);
-  margin-right: 8px;
-  background-color: rgba(0, 0, 0, 0.85);
-  color: #fff;
-  font-size: 12px;
-  padding: 5px 8px;
-  border-radius: 4px;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s, visibility 0.2s;
-  pointer-events: none;
-  z-index: 1000;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-}
-
-#savedLevelsList .btn-actions .dialog-btn::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: 100%;
-  transform: translateY(-50%);
-  margin-right: 3px;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 5px solid rgba(0, 0, 0, 0.85);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s, visibility 0.2s;
-  pointer-events: none;
-  z-index: 1000;
-}
-
-#savedLevelsList .btn-actions .dialog-btn:hover::before,
-#savedLevelsList .btn-actions .dialog-btn:hover::after {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* Custom scrollbar styling */
-#savedLevelsList::-webkit-scrollbar {
-  width: 8px;
-}
-
-#savedLevelsList::-webkit-scrollbar-track {
-  background: #222;
-  border-radius: 4px;
-}
-
-#savedLevelsList::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 4px;
-}
-
-#savedLevelsList::-webkit-scrollbar-thumb:hover {
-  background: #666;
-}
-
-.search-container {
-  margin: 15px 0;
-  position: relative;
-  width: 100%;
-}
-
-.search-container input {
-  width: 100%;
-  padding: 10px 15px 10px 35px;
-  box-sizing: border-box;
-  border-radius: 5px;
-  border: 1px solid #444;
-  background-color: #333;
-  color: #fff;
-  font-size: 14px;
-}
-
-.search-container input:focus {
-  outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
-}
-
-.search-container .search-icon {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #999;
-  font-size: 16px;
-}
-
-.empty-list-message {
-  text-align: center;
-  padding: 25px;
-  color: #999;
-  font-style: italic;
-  background-color: #2a2a2a;
-  border-radius: 5px;
-  margin: 15px 0;
 }
 
 #savedLevelsList li .level-name {

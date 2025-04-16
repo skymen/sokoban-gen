@@ -133,15 +133,20 @@
       <div class="controls">
         <button id="newGameBtn">New Level</button>
         <button id="sameParamsBtn">Retry Same</button>
-        <button id="playSolutionBtn" class="play-button disabled" disabled>
-          Play Solution
-        </button>
       </div>
       <div class="controls">
+        <button id="playSolutionBtn" class="copy-button disabled" disabled>
+          Play Solution
+        </button>
         <button id="copyLevelBtn" class="copy-button">Copy Level URL</button>
         <button id="saveLevelBtn" class="copy-button">Save Level</button>
-        <button id="showSavedLevelsBtn" class="copy-button">Levels List</button>
-        <button id="showParamsDialogBtn" class="copy-button">
+      </div>
+      <div class="controls">
+        <button id="showSavedLevelsBtn" class="extra-button">
+          Levels List
+        </button>
+        <button id="showHistoryBtn" class="extra-button">History</button>
+        <button id="showParamsDialogBtn" class="extra-button">
           Adjust Parameters
         </button>
       </div>
@@ -404,6 +409,29 @@
             </button>
             <button id="closeParamsDialogBtn" class="dialog-btn close-btn">
               <span class="icon">✖️</span> Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="levelHistoryDialog" class="dialog-overlay">
+        <div class="dialog-content">
+          <h2>🕒 Level History</h2>
+          <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input
+              type="text"
+              id="historySearchInput"
+              placeholder="Search level history..."
+            />
+          </div>
+          <div id="levelHistoryList"></div>
+          <div class="dialog-footer">
+            <button id="clearHistoryBtn" class="dialog-btn">
+              <span class="icon">🗑️</span> Clear History
+            </button>
+            <button id="closeHistoryDialogBtn" class="dialog-btn close-btn">
+              <span class="icon">✖️</span> Close
             </button>
           </div>
         </div>
